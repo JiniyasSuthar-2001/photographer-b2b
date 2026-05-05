@@ -1,0 +1,138 @@
+/* ── Analytics Page ────────────────────────────────────────────────────────── */
+.analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Financial Lock */
+.financial-lock-wrapper {
+  position: relative;
+}
+
+.financial-lock-blur {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.4;
+}
+
+.financial-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: rgba(249,250,251,0.6);
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--border);
+  backdrop-filter: blur(2px);
+}
+
+.financial-lock-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.financial-lock-desc {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 220px;
+}
+
+
+
+.analytics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 900px) {
+  .analytics-row { grid-template-columns: 1fr; }
+}
+
+/* Utilization */
+.util-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.util-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.util-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  width: 70px;
+  flex-shrink: 0;
+}
+
+.util-bar {
+  flex: 1;
+}
+
+.util-pct {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Pie Legend */
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pie-legend-item span:last-child { margin-left: auto; }
+
+.pie-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Performance Metrics */
+.perf-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.perf-metric-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.perf-metric-value {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}

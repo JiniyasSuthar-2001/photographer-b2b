@@ -1,0 +1,38 @@
+ POST `/signup`
+- Full Path: `http://localhost:8000/api/auth/signup`
+- Files Involved:
+  - Router: `backend/routers/auth.py`
+  - Service: `backend/services/auth_service.py`
+  - Database: `backend/db/database.py` (SQLite)
+  - Model: `backend/models/models.py` (SQLAlchemy User)
+  - Schema: `UserSignUp` in `backend/models/schemas.py`
+- Implementation Details:
+  - Receives `username` and `password`.
+  - Hashes the password using `bcrypt` via `passlib`.
+  - Saves a new record in the `users` table in the local `lumiere.db` SQLite database.
+
+
+
+POST `/login`
+- Full Path: `http://localhost:8000/api/auth/login`
+- Files Involved:
+  - Router: `backend/routers/auth.py`
+  - Service: `backend/services/auth_service.py`
+  - Schema: `UserLogin` in `backend/models/schemas.py`
+Implementation Details:
+  - Receives `username` and `password`.
+  - Verifies the password against the hashed password stored in SQLite.
+  - Generates a JWT (JSON Web Token) using `HS256` algorithm and a local `SECRET_KEY`.
+
+
+
+ Global API Configuration
+
+Base URL
+- Development: `http://localhost:8000/api`
+- Routing Logic: Managed by `backend/api/api_router.py`, which aggregates all sub-routers (Auth, Jobs, etc.) into a single entry point for `main.py`.
+
+CORS Policy
+- Configured in: `backend/main.py`
+- Permitted Origin: `http://localhost:5173` (Vite Default)
+- Rationale: Strict origin matching prevents Cross-Origin request forgery while allowing the local development environment to communicate seamlessly.

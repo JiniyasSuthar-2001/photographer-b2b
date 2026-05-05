@@ -1,0 +1,272 @@
+/* ── Job Hub ───────────────────────────────────────────────────────────────── */
+.jobhub-page { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.jobhub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.jobhub-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 960px) { .jobhub-layout { grid-template-columns: 1fr; } }
+
+/* ── Tabs ───────────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+.tab.active {
+  background: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.tab-count {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  min-width: 18px;
+  text-align: center;
+}
+
+.tab.active .tab-count {
+  background: rgba(59,130,246,0.12);
+  color: var(--accent-blue);
+}
+
+.tab-count.urgent {
+  background: rgba(244,63,94,0.12);
+  color: var(--accent-rose);
+}
+
+/* ── Team Roster ────────────────────────────────────────────────────────────── */
+.team-roster {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--space-4));
+}
+
+.team-roster-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.team-roster-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.team-member-card {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.team-member-card:last-child { border-bottom: none; }
+.team-member-card:hover { background: var(--bg-hover); }
+.team-member-card.expanded { background: var(--bg-active); }
+
+.team-member-row { display: flex; align-items: center; gap: var(--space-2); }
+
+.team-member-info { flex: 1; min-width: 0; }
+.team-member-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.team-member-role { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+.team-member-expanded {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.team-member-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Job Hub Main ────────────────────────────────────────────────────────────── */
+.jobhub-main { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ── Job Cards Grid ─────────────────────────────────────────────────────────── */
+.jobhub-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.jh-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.jh-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+@keyframes card-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); }
+  70% { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
+.jh-card.pulse {
+  border-color: rgba(59,130,246,0.5);
+  animation: card-pulse 2s infinite;
+}
+
+.jh-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.jh-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.jh-card-client {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.jh-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.jh-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.jh-card-assignee {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-light);
+}
+
+.jh-req-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.jh-req-chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.jh-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-light);
+}
+
+.jh-card-budget {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+/* ── Role Pill ────────────────────────────────────────────────────────────────── */
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.role-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Select field ────────────────────────────────────────────────────────────── */
+select.input-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  cursor: pointer;
+}

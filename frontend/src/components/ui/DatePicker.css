@@ -1,0 +1,112 @@
+.datepicker-container {
+  position: relative;
+  width: 100%;
+}
+
+.datepicker-input-wrapper {
+  position: relative;
+  cursor: pointer;
+}
+
+.datepicker-input-wrapper input {
+  cursor: pointer;
+}
+
+.datepicker-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.datepicker-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 3000;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  width: 250px;
+}
+
+.datepicker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.datepicker-header button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+}
+
+.datepicker-header button:hover {
+  background: var(--bg-hover);
+}
+
+.datepicker-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.datepicker-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.datepicker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.datepicker-grid .day, .datepicker-grid .empty {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.datepicker-grid .day {
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.datepicker-grid .day:hover:not(.past) {
+  background: var(--bg-hover);
+}
+
+.datepicker-grid .day.today {
+  color: var(--accent-blue);
+  font-weight: 700;
+}
+
+.datepicker-grid .day.selected {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.datepicker-grid .day.past {
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 0.5;
+}

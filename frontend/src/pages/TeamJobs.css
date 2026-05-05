@@ -1,0 +1,341 @@
+/* ── Team & Jobs Page ─────────────────────────────────────────────────────── */
+.teamjobs-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.teamjobs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Layout */
+.teamjobs-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .teamjobs-layout { grid-template-columns: 1fr; }
+}
+
+/* Team Roster */
+.team-roster {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.team-roster-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.team-roster-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.team-member-card {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.team-member-card:last-child { border-bottom: none; }
+.team-member-card:hover { background: var(--bg-hover); }
+.team-member-card.expanded { background: var(--bg-active); }
+
+.team-member-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.team-member-info { flex: 1; }
+
+.team-member-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.team-member-role {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.team-member-expanded {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.team-member-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Kanban */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (max-width: 1300px) {
+  .kanban-board { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .kanban-board { grid-template-columns: 1fr; }
+}
+
+.kanban-col {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban-col-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.kanban-col-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kanban-cards {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 80px;
+}
+
+.kanban-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-6) var(--space-3);
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+/* Kanban Card */
+.kanban-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  transition: all var(--transition);
+  position: relative;
+}
+
+.kanban-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.kanban-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.kanban-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.kanban-card-client {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.kanban-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.kanban-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.kanban-card-budget {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.kanban-card-assignee {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* Kanban Menu */
+.kanban-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  overflow: hidden;
+  min-width: 160px;
+}
+
+.kanban-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition);
+}
+
+.kanban-menu-item:hover { background: var(--bg-hover); }
+
+/* Freelancer View */
+.freelancer-filters {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.freelancer-job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-5);
+}
+
+.fl-job-card { cursor: default; }
+.fl-job-card-inner { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+
+.fl-job-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.fl-job-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fl-job-client {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.fl-job-budget {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  white-space: nowrap;
+}
+
+.fl-job-meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.fl-job-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fl-job-notes {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  background: var(--bg-base);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-blue);
+}
+
+.fl-job-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* Applied Jobs */
+.applied-jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.applied-job-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}

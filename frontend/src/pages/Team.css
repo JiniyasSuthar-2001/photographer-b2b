@@ -1,0 +1,73 @@
+.team-page {
+  padding: var(--space-6) var(--space-8);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: var(--space-6);
+}
+
+.team-table-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+.team-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.team-table th {
+  background: var(--surface-hover);
+  padding: var(--space-3) var(--space-4);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.team-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.team-table tr:last-child td {
+  border-bottom: none;
+}
+
+.team-member-name-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 500;
+}
+
+.team-category-cell {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.category-pill {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.team-action-cell {
+  display: flex;
+  gap: var(--space-2);
+}
