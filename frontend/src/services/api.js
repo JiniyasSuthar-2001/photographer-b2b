@@ -31,6 +31,10 @@ export const authService = {
         const response = await apiClient.post('/auth/signup', { username, password });
         return response.data;
     },
+    forgotPassword: async (username) => {
+        const response = await apiClient.post('/auth/forgot-password', { username });
+        return response.data;
+    },
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

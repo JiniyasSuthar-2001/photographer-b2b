@@ -9,6 +9,12 @@ from core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+HARDCODED_USERS = {
+    "admin": "admin@001",
+    "admin01": "admin@002",
+    "admin02": "admin003",
+}
+
 class AuthService:
     @staticmethod
     def get_password_hash(password):
@@ -31,6 +37,24 @@ class AuthService:
 
     @staticmethod
     def authenticate_user(db: Session, user_data: UserLogin):
+        # Check hardcoded users first
+        if user_data.username in HARDCODED_USERS:
+            if HARDCODED_USERS[user_data.username] == user_data.password:
+                # Get or create the user in DB so relationships work
+                user = db.query(User).filter(User.username == user_data.username).first()
+                if not user:
+                    user = User(
+                        username=user_data.username,
+                        hashed_password=AuthService.get_password_hash(user_data.password),
+                        full_name=user_data.username.capitalize(),
+                        user_type="studio_owner",
+                        phone=f"000{list(HARDCODED_USERS.keys()).index(user_data.username)}" # Dummy phone
+                    )
+                    db.add(user)
+                    db.commit()
+                    db.refresh(user)
+                return user
+        
         user = db.query(User).filter(User.username == user_data.username).first()
         if not user:
             return False
@@ -43,11 +67,28 @@ class AuthService:
         hashed_password = AuthService.get_password_hash(user_data.password)
         db_user = User(
             username=user_data.username,
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
+            phone=user_data.phone,
+            full_name=user_data.full_name,
+            city=user_data.city,
+            category=user_data.category,
+            user_type=user_data.user_type
         )
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
         return db_user
+
+    @staticmethod
+    def get_current_user(db: Session, token: str):
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            username: str = payload.get("sub")
+            if username is None:
+                return None
+        except JWTError:
+            return None
+        user = db.query(User).filter(User.username == username).first()
+        return user
 
 auth_service = AuthService()

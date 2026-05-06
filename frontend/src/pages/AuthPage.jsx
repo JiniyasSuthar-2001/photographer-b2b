@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/api';
+import { Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import '../styles/Auth.css';
 
 const AuthPage = () => {
@@ -12,6 +13,8 @@ const AuthPage = () => {
         password: '',
         confirmPassword: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
     const toggleAuth = () => {
         setIsSignUp(!isSignUp);
@@ -49,6 +52,19 @@ const AuthPage = () => {
         }
     };
 
+    const handleForgotPassword = async () => {
+        if (!formData.username) {
+            setError("Please enter your username first to reset password.");
+            return;
+        }
+        try {
+            const response = await authService.forgotPassword(formData.username);
+            alert(response.message);
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Failed to process request.');
+        }
+    };
+
     return (
         <div className="auth-container">
             <div className={`cont ${isSignUp ? 's--signup' : ''}`}>
@@ -65,17 +81,32 @@ const AuthPage = () => {
                             placeholder="Enter your username"
                         />
                     </label>
-                    <label>
+                    <label className="password-label">
                         <span>Password</span>
-                        <input 
-                            type="password" 
-                            name="password" 
-                            value={formData.password} 
-                            onChange={handleChange} 
-                            placeholder="Enter your password"
-                        />
+                        <div className="password-input-wrapper">
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                name="password" 
+                                value={formData.password} 
+                                onChange={handleChange} 
+                                placeholder="Enter your password"
+                            />
+                            <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
                     </label>
-                    <p className="forgot-pass">Forgot password?</p>
+                    <div className="auth-options">
+                        <label className="remember-me">
+                            <input 
+                                type="checkbox" 
+                                checked={rememberMe} 
+                                onChange={(e) => setRememberMe(e.target.checked)} 
+                            />
+                            <span>Remember me</span>
+                        </label>
+                        <p className="forgot-pass" onClick={handleForgotPassword}>Forgot password?</p>
+                    </div>
                     <button type="button" className="submit" onClick={handleSubmit}>
                         Sign In
                     </button>
@@ -108,25 +139,32 @@ const AuthPage = () => {
                                 placeholder="Choose a username"
                             />
                         </label>
-                        <label>
+                        <label className="password-label">
                             <span>Password</span>
-                            <input 
-                                type="password" 
-                                name="password" 
-                                value={formData.password} 
-                                onChange={handleChange} 
-                                placeholder="Create a password"
-                            />
+                            <div className="password-input-wrapper">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    name="password" 
+                                    value={formData.password} 
+                                    onChange={handleChange} 
+                                    placeholder="Create a password"
+                                />
+                                <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                         </label>
-                        <label>
+                        <label className="password-label">
                             <span>Confirm Password</span>
-                            <input 
-                                type="password" 
-                                name="confirmPassword" 
-                                value={formData.confirmPassword} 
-                                onChange={handleChange} 
-                                placeholder="Confirm your password"
-                            />
+                            <div className="password-input-wrapper">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    name="confirmPassword" 
+                                    value={formData.confirmPassword} 
+                                    onChange={handleChange} 
+                                    placeholder="Confirm your password"
+                                />
+                            </div>
                         </label>
                         <button type="button" className="submit" onClick={handleSubmit}>
                             Sign Up

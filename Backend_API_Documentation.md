@@ -38,9 +38,115 @@ The authentication layer handles user registration and identity verification usi
   - **Statelessness**: Using JWTs allows the backend to remain stateless, scaling easily as we don't need to manage sessions in memory.
   - **Portability**: All user data and tokens are managed within our own ecosystem, making it easier to migrate or customize authentication rules later.
 
+### POST `/forgot-password`
+- **Full Path**: `http://localhost:8000/api/auth/forgot-password`
+- **Implementation Details**:
+  - Receives a `username`.
+  - Simulates sending a password reset email (logs message to console).
+- **Rationale**: Essential self-service feature for user recovery.
+
 ---
 
-## 2. Global API Configuration
+## 2. Team Management Layer (`/api/team`)
+
+The team layer manages relationships between studio owners and photographers, including shared work history and the invitation system.
+
+### GET `/collaborations/{member_id}`
+- **Full Path**: `http://localhost:8000/api/team/collaborations/{member_id}`
+- **Files Involved**:
+  - Router: `backend/routers/team.py`
+  - Model: `Job`, `Assignment` in `backend/models/models.py`
+  - Schema: `CollaborationResponse` in `backend/models/schemas.py`
+- **Implementation Details**:
+  - Requires JWT Authentication.
+  - Joins `jobs` and `assignments` tables.
+  - Filters for jobs owned by the current user where the `member_id` is assigned.
+  - Supports pagination via `page` and `limit` query parameters.
+- **Rationale**: Provides a focused view of professional history without exposing unrelated work data.
+
+### GET `/users/search`
+- **Full Path**: `http://localhost:8000/api/team/users/search`
+- **Implementation Details**:
+  - Search by `phone` number (unique identifier).
+  - Returns basic user profile if found.
+- **Rationale**: Efficient user discovery for the invite system using a known unique identifier.
+
+### POST `/request`
+- **Full Path**: `http://localhost:8000/api/team/request`
+- **Implementation Details**:
+  - Requires JWT Authentication.
+  - Creates a `pending` entry in `team_requests`.
+  - Prevents duplicate pending requests.
+- **Rationale**: Formalizes the team building process, ensuring consent before adding members.
+
+### PATCH `/request/{id}`
+- **Full Path**: `http://localhost:8000/api/team/request/{id}`
+- **Implementation Details**:
+  - Updates status to `accepted` or `declined`.
+  - If `accepted`, creates a permanent entry in the `team` table.
+- **Rationale**: Completes the handshake loop for team membership.
+
+### GET `/`
+- **Full Path**: `http://localhost:8000/api/team/`
+- **Implementation Details**:
+  - Returns a list of all photographers associated with the studio owner.
+  - Includes calculated fields like `jobsCompleted` (shared work history).
+- **Rationale**: Core dashboard view for team management.
+
+---
+
+## 3. Notification Layer (`/api/notifications`)
+
+Handles user alerts for team and job-related activities.
+
+### GET `/notifications/`
+- **Full Path**: `http://localhost:8000/api/notifications/`
+- **Implementation Details**: Paginated list of notifications for the current user.
+- **Rationale**: Keeps users informed of platform activities.
+
+### PATCH `/notifications/{id}/read`
+- **Full Path**: `http://localhost:8000/api/notifications/{id}/read`
+- **Implementation Details**: Marks a specific notification as read.
+
+---
+
+## 4. Job Request Layer (`/api/requests`)
+
+Handles professional job invites (distinct from team membership).
+
+### POST `/requests/`
+- **Full Path**: `http://localhost:8000/api/requests/`
+- **Implementation Details**: Sends a job invite and triggers a notification.
+
+### PATCH `/requests/{id}`
+- **Full Path**: `http://localhost:8000/api/requests/{id}`
+- **Implementation Details**: Accepts/declines a job invite, creating an assignment on acceptance.
+
+### GET `/eligible-jobs/{photographer_id}`
+- **Full Path**: `http://localhost:8000/api/requests/eligible-jobs/{photographer_id}`
+- **Implementation Details**:
+  - Filters `open` jobs owned by the studio owner.
+  - Matches the job `category` with the photographer's specialty.
+  - Excludes jobs where the photographer is already invited or assigned.
+- **Rationale**: Smart filtering for the invitation workflow.
+
+---
+
+## 5. Job Management Layer (`/api/jobs`)
+
+Handles the lifecycle of professional photography assignments.
+
+### POST `/`
+- **Full Path**: `http://localhost:8000/api/jobs/`
+- **Implementation Details**: Creates a new job with a specific category (Wedding, Portrait, etc.).
+
+### GET `/`
+- **Full Path**: `http://localhost:8000/api/jobs/`
+- **Implementation Details**: Returns all jobs owned by the authenticated studio owner.
+
+---
+
+## 6. Global API Configuration
 
 ### Base URL
 - **Development**: `http://localhost:8000/api`

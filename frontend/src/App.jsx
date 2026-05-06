@@ -9,6 +9,7 @@ import Analytics from './pages/Analytics';
 import Profile from './pages/Profile';
 import Team from './pages/Team';
 import Notes from './pages/Notes';
+import Notifications from './pages/Notifications';
 import AuthPage from './pages/AuthPage';
 import './styles/global.css';
 import './styles/components.css';
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/calendar"  element={<RequireAuth><Calendar /></RequireAuth>} />
           <Route path="/analytics" element={<RequireAuth><AnalyticsGuard /></RequireAuth>} />
           <Route path="/notes"     element={<RequireAuth><Notes /></RequireAuth>} />
+          <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
           <Route path="/profile"   element={<RequireAuth><Profile /></RequireAuth>} />
           
           {/* Fallback */}

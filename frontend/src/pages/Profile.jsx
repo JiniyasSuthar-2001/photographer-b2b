@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   User, Mail, Briefcase, MapPin, Link, AtSign, Phone,
-  Plus, Trash2, Camera, Settings, AlertTriangle, Star
+  Plus, Trash2, Camera, Settings, AlertTriangle, Star, LogOut
 } from 'lucide-react';
 import Avatar from '../components/ui/Avatar';
 import { ROLE_TYPES } from '../data/mockData';
@@ -14,6 +15,7 @@ const ROLE_KEYS  = Object.keys(ROLE_TYPES);
 
 export default function Profile() {
   const { state, dispatch, addToast } = useApp();
+  const navigate = useNavigate();
   const { user, freelancerProfile: fp } = state;
 
   const [name,  setName]  = useState(user.name);
@@ -57,6 +59,12 @@ export default function Profile() {
   const removeEquip = (id) => {
     dispatch({type:'REMOVE_EQUIPMENT', payload:id});
     addToast('Equipment removed','info');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/auth');
+    addToast('Logged out successfully', 'info');
   };
 
   return (
@@ -246,9 +254,14 @@ export default function Profile() {
               </div>
             </div>
 
-            <button className="btn btn-primary" style={{marginTop:'var(--space-5)',justifyContent:'center',width:'100%'}} onClick={handleSaveAll}>
-              Save Profile
-            </button>
+            <div style={{display:'flex', gap:'var(--space-3)', marginTop:'var(--space-5)'}}>
+              <button className="btn btn-primary" style={{flex:2, justifyContent:'center'}} onClick={handleSaveAll}>
+                Save Profile
+              </button>
+              <button className="btn btn-danger" style={{flex:1, justifyContent:'center', background:'var(--accent-rose)', borderColor:'var(--accent-rose)'}} onClick={handleLogout}>
+                <LogOut size={15}/> Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </div>

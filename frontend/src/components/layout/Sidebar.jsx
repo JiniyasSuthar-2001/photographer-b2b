@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, BarChart2, UserCircle,
   Briefcase, ChevronRight, Sparkles, Settings, Lock, Camera,
-  ClipboardList
+  ClipboardList, Bell
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import Avatar from '../ui/Avatar';
@@ -15,6 +15,7 @@ const studioOwnerNav = [
   { path: '/team', icon: Users, label: 'Team' },
   { path: '/analytics', icon: BarChart2, label: 'Analytics' },
   { path: '/notes', icon: ClipboardList, label: 'Notes' },
+  { path: '/notifications', icon: Bell, label: 'Notifications' },
   { path: '/profile', icon: UserCircle, label: 'Profile' },
 ];
 
@@ -24,6 +25,7 @@ const freelancerNav = [
   { path: '/job-hub', icon: Briefcase, label: 'Job Hub' },
   { path: '/team', icon: Users, label: 'Team' },
   { path: '/notes', icon: ClipboardList, label: 'Notes' },
+  { path: '/notifications', icon: Bell, label: 'Notifications' },
   { path: '/profile', icon: UserCircle, label: 'Profile' },
 ];
 
