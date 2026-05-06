@@ -8,7 +8,6 @@ This package contains the files that are excluded from Git for security or data 
 | :--- | :--- | :--- |
 | **`lumiere.db`** | `(Root Directory)` | The primary SQLite database containing all data. |
 | **`.env`** | `backend/` | The environment configuration file with security keys. |
-| **`postman.json`** | `(Root Directory)` | The latest API collection for testing. |
 | **`Backend_API_Documentation.md`** | `(Root Directory)` | Technical reference for all implemented endpoints. |
 | **`Postman_Testing_Guide.md`** | `(Root Directory)` | Guide on how to import and use the Postman collection. |
 | **`update_postman.py`** | `(Root Directory)` | Script to sync codebase changes with Postman. |
