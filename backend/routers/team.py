@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from db.database import get_db
 from models import models
-from models.schemas import CollaborationResponse, UserSearchResponse, TeamRequestCreate, TeamRequestResponse, UserProfile
+from models.schemas import CollaborationResponse, UserSearchResponse, TeamRequestCreate, TeamRequestResponse, TeamMemberUpdate
 from routers.auth import get_current_user
 import math
 
@@ -66,11 +66,16 @@ async def send_team_request(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Find receiver by phone number
+    receiver = db.query(models.User).filter(models.User.phone == request.phone).first()
+    if not receiver:
+        raise HTTPException(status_code=404, detail="Photographer with this phone number not found")
+
     # Check if request already exists
     existing = db.query(models.TeamRequest).filter(
         and_(
             models.TeamRequest.sender_id == current_user.id,
-            models.TeamRequest.receiver_id == request.receiver_id,
+            models.TeamRequest.receiver_id == receiver.id,
             models.TeamRequest.status == "pending"
         )
     ).first()
@@ -80,8 +85,11 @@ async def send_team_request(
 
     new_request = models.TeamRequest(
         sender_id=current_user.id,
-        receiver_id=request.receiver_id,
-        status="pending"
+        receiver_id=receiver.id,
+        status="pending",
+        display_name=request.display_name,
+        display_category=request.display_category,
+        display_city=request.display_city
     )
     db.add(new_request)
     db.commit()
@@ -89,11 +97,9 @@ async def send_team_request(
 
     # Create notification for receiver
     notification = models.Notification(
-        user_id=request.receiver_id,
-        title="New Team Request",
+        user_id=receiver.id,
         message=f"{current_user.full_name} has invited you to join their team.",
-        type="team_request",
-        reference_id=new_request.id
+        redirect_to="/notifications" # Will handle in bell dropdown
     )
     db.add(notification)
     db.commit()
@@ -120,10 +126,14 @@ async def respond_to_request(
     team_request.status = status
     
     if status == "accepted":
-        # Add to team table
+        # Add to team table with custom display info
         new_team_member = models.Team(
             owner_id=team_request.sender_id,
-            member_id=team_request.receiver_id
+            member_id=team_request.receiver_id,
+            display_name=team_request.display_name,
+            display_category=team_request.display_category,
+            display_city=team_request.display_city,
+            phone=current_user.phone
         )
         db.add(new_team_member)
     
@@ -133,10 +143,8 @@ async def respond_to_request(
     # Create notification for sender (Studio Owner)
     notification_sender = models.Notification(
         user_id=team_request.sender_id,
-        title=f"Team Invite {status.capitalize()}",
         message=f"{current_user.full_name} has {status} your invitation to join the team.",
-        type="request_response",
-        reference_id=team_request.id
+        redirect_to="/team"
     )
     db.add(notification_sender)
 
@@ -144,10 +152,8 @@ async def respond_to_request(
     sender_name = db.query(models.User).filter(models.User.id == team_request.sender_id).first().full_name
     notification_receiver = models.Notification(
         user_id=current_user.id,
-        title=f"Team Request {status.capitalize()}",
         message=f"You have {status} {sender_name}'s invitation to join their team.",
-        type="request_response",
-        reference_id=team_request.id
+        redirect_to="/team"
     )
     db.add(notification_receiver)
     
@@ -160,30 +166,66 @@ async def get_team(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    team_members = db.query(models.User).\
-        join(models.Team, models.User.id == models.Team.member_id).\
-        filter(models.Team.owner_id == current_user.id).all()
+    team_entries = db.query(models.Team).filter(models.Team.owner_id == current_user.id).all()
     
-    # Return formatted data
+    # Return formatted data using display aliases
     data = []
-    for m in team_members:
-        # Count jobs done together
+    for entry in team_entries:
+        # Count jobs done together (using member_id for logic)
         jobs_together = db.query(models.Assignment).\
             join(models.Job, models.Assignment.job_id == models.Job.id).\
             filter(and_(
                 models.Job.studio_owner_id == current_user.id,
-                models.Assignment.member_id == m.id,
+                models.Assignment.member_id == entry.member_id,
                 models.Job.status == "completed"
             )).count()
 
         data.append({
-            "id": m.id,
-            "name": m.full_name,
-            "city": m.city,
-            "phone": m.phone,
-            "category": m.category,
+            "id": entry.member_id,
+            "name": entry.display_name,
+            "city": entry.display_city,
+            "phone": entry.phone,
+            "category": entry.display_category,
             "jobsCompleted": jobs_together,
-            "specialties": [m.category] if m.category else [],
-            "status": "available" # Mock status
+            "specialties": [entry.display_category] if entry.display_category else [],
+            "status": "available"
         })
     return data
+
+@router.patch("/{member_id}")
+async def update_team_member(
+    member_id: int,
+    update: TeamMemberUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    entry = db.query(models.Team).filter(
+        and_(models.Team.owner_id == current_user.id, models.Team.member_id == member_id)
+    ).first()
+    
+    if not entry:
+        raise HTTPException(status_code=404, detail="Team member not found")
+
+    if update.display_name: entry.display_name = update.display_name
+    if update.display_category: entry.display_category = update.display_category
+    if update.display_city: entry.display_city = update.display_city
+
+    db.commit()
+    return {"message": "Updated successfully"}
+
+@router.delete("/{member_id}")
+async def remove_team_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    entry = db.query(models.Team).filter(
+        and_(models.Team.owner_id == current_user.id, models.Team.member_id == member_id)
+    ).first()
+    
+    if not entry:
+        raise HTTPException(status_code=404, detail="Team member not found")
+
+    db.delete(entry)
+    db.commit()
+    return {"message": "Removed successfully"}

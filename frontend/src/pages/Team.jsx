@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Search, ChevronLeft, ChevronRight, UserPlus, Clock, Send } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, UserPlus, Clock, Send, Edit2, Trash2 } from 'lucide-react';
 import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
 import JobSelectionModal from '../components/team/JobSelectionModal';
@@ -22,10 +22,13 @@ export default function Team() {
 
   // Add Teammate State
   const [showAddModal, setShowAddModal] = useState(false);
-  const [searchPhone, setSearchPhone] = useState('');
-  const [searchResult, setSearchResult] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [requestStatus, setRequestStatus] = useState(null); // 'pending', 'sent'
+  const [addForm, setAddForm] = useState({ name: '', category: 'Wedding', city: '', phone: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Teammate State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [memberToEdit, setMemberToEdit] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', category: '', city: '' });
   
   // Job Selection Modal State
   const [teamMembers, setTeamMembers] = useState([]);
@@ -82,38 +85,67 @@ export default function Team() {
     setPage(1);
   };
 
-  const handleSearch = async () => {
-    if (!searchPhone) return;
-    setIsSearching(true);
-    setSearchResult(null);
+  const handleAddMember = async (e) => {
+    e.preventDefault();
+    if (!addForm.phone || !addForm.name) return;
+    setIsSubmitting(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/team/users/search`, {
-        params: { phone: searchPhone }
-      });
-      setSearchResult(response.data);
+      await axios.post(`${API_BASE_URL}/team/request`, 
+        { 
+          phone: addForm.phone,
+          display_name: addForm.name,
+          display_category: addForm.category,
+          display_city: addForm.city
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      addToast('Team request sent successfully');
+      setShowAddModal(false);
+      setAddForm({ name: '', category: 'Wedding', city: '', phone: '' });
+      fetchTeam();
     } catch (error) {
-      if (error.response?.status === 404) {
-        addToast('User not found', 'error');
-      } else {
-        addToast('Search failed', 'error');
-      }
+      addToast(error.response?.data?.detail || 'Failed to send request', 'error');
     } finally {
-      setIsSearching(false);
+      setIsSubmitting(false);
     }
   };
 
-  const sendRequest = async () => {
-    if (!searchResult) return;
+  const handleUpdateMember = async (e) => {
+    e.preventDefault();
     try {
-      await axios.post(`${API_BASE_URL}/team/request`, 
-        { receiver_id: searchResult.id },
+      await axios.patch(`${API_BASE_URL}/team/${memberToEdit.id}`, 
+        { 
+          display_name: editForm.name,
+          display_category: editForm.category,
+          display_city: editForm.city
+        },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
-      setRequestStatus('sent');
-      addToast('Team request sent successfully');
+      addToast('Member info updated');
+      setShowEditModal(false);
+      fetchTeam();
     } catch (error) {
-      addToast(error.response?.data?.detail || 'Failed to send request', 'error');
+      addToast('Update failed', 'error');
     }
+  };
+
+  const handleDeleteMember = async (memberId) => {
+    if (!window.confirm('Are you sure you want to remove this member?')) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/team/${memberId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      addToast('Member removed');
+      fetchTeam();
+    } catch (error) {
+      addToast('Delete failed', 'error');
+    }
+  };
+
+  const openEditModal = (member) => {
+    setMemberToEdit(member);
+    setEditForm({ name: member.name, category: member.category, city: member.city });
+    setShowEditModal(true);
   };
 
   return (
@@ -141,24 +173,22 @@ export default function Team() {
             </tr>
           </thead>
           <tbody>
-            {team.map(m => (
+            {teamMembers.map(m => (
               <tr key={m.id}>
                 <td>
                   <div className="team-member-name-cell" onClick={() => handleNameClick(m)} style={{cursor:'pointer'}}>
-                    <Avatar name={m.name} size="sm" showStatus status={m.status} />
+                    <Avatar name={m.name} size="sm" />
                     <span className="member-name-link">{m.name}</span>
                   </div>
                 </td>
                 <td>{m.jobsCompleted}</td>
                 <td>
                   <div className="team-category-cell">
-                    {(m.specialties || []).map(s => (
-                      <span key={s} className="category-pill">{s}</span>
-                    ))}
+                    <span className="category-pill">{m.category}</span>
                   </div>
                 </td>
-                <td>{m.city || 'Ahmedabad'}</td>
-                <td>{m.phone || '+91 9876543210'}</td>
+                <td>{m.city}</td>
+                <td>{m.phone}</td>
                 <td>
                   <div className="team-action-cell">
                     <button className="btn btn-ghost btn-sm" title="Invite to Job" onClick={() => {
@@ -167,15 +197,20 @@ export default function Team() {
                     }}>
                       <Send size={16} />
                     </button>
+                    <button className="btn btn-ghost btn-sm" title="Edit Info" onClick={() => openEditModal(m)}>
+                      <Edit2 size={16} />
+                    </button>
                     <button className="btn btn-ghost btn-sm" title="View History" onClick={() => handleNameClick(m)}>
                       <Clock size={16} />
                     </button>
-                    <button className="btn btn-danger btn-sm" title="Remove Member"><UserPlus size={16} style={{transform:'rotate(45deg)'}} /></button>
+                    <button className="btn btn-danger btn-sm" title="Remove Member" onClick={() => handleDeleteMember(m.id)}>
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {team.length === 0 && (
+            {teamMembers.length === 0 && (
               <tr>
                 <td colSpan="6" style={{textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-muted)'}}>
                   No team members found.
@@ -242,57 +277,125 @@ export default function Team() {
       {/* Add Teammate Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          setSearchResult(null);
-          setSearchPhone('');
-          setRequestStatus(null);
-        }}
+        onClose={() => setShowAddModal(false)}
         title="Add New Teammate"
         size="md"
       >
-        <div className="add-teammate-content">
-          <p className="modal-desc">Search for photographers by their phone number to invite them to your team.</p>
+        <form onSubmit={handleAddMember} className="add-teammate-form">
+          <p className="modal-desc">Enter photographer details to send a team invitation. They will be identified by this info on your side.</p>
           
-          <div className="search-box">
+          <div className="form-group">
+            <label>Photographer Name</label>
             <input 
               type="text" 
               className="input-field" 
-              placeholder="Enter phone number (e.g. 9876543210)"
-              value={searchPhone}
-              onChange={(e) => setSearchPhone(e.target.value)}
+              required
+              value={addForm.name}
+              onChange={(e) => setAddForm({...addForm, name: e.target.value})}
+              placeholder="e.g. Marcus Chen"
             />
-            <button className="btn btn-primary" onClick={handleSearch} disabled={isSearching}>
-              <Search size={18} />
-            </button>
           </div>
 
-          {isSearching && <div className="loading-state">Searching...</div>}
+          <div className="form-group">
+            <label>Phone Number (Unique ID)</label>
+            <input 
+              type="text" 
+              className="input-field" 
+              required
+              value={addForm.phone}
+              onChange={(e) => setAddForm({...addForm, phone: e.target.value})}
+              placeholder="e.g. 9876543210"
+            />
+          </div>
 
-          {searchResult && (
-            <div className="search-result-card">
-              <div className="result-header">
-                <Avatar name={searchResult.full_name} size="md" />
-                <div className="result-info">
-                  <div className="result-name">{searchResult.full_name}</div>
-                  <div className="result-location">{searchResult.city || 'Location not set'}</div>
-                </div>
-              </div>
-              <div className="result-category">
-                <span className="category-pill">{searchResult.category || 'Freelancer'}</span>
-              </div>
-              <div className="result-actions">
-                {requestStatus === 'sent' ? (
-                  <button className="btn btn-secondary w-full" disabled>Request Sent</button>
-                ) : (
-                  <button className="btn btn-primary w-full" onClick={sendRequest}>
-                    <Send size={16} style={{marginRight:8}} /> Send Request
-                  </button>
-                )}
-              </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Category</label>
+              <select 
+                className="input-field"
+                value={addForm.category}
+                onChange={(e) => setAddForm({...addForm, category: e.target.value})}
+              >
+                <option value="Wedding">Wedding</option>
+                <option value="Portrait">Portrait</option>
+                <option value="Event">Event</option>
+                <option value="Fashion">Fashion</option>
+                <option value="General">General</option>
+              </select>
             </div>
-          )}
-        </div>
+            <div className="form-group">
+              <label>City</label>
+              <input 
+                type="text" 
+                className="input-field"
+                value={addForm.city}
+                onChange={(e) => setAddForm({...addForm, city: e.target.value})}
+                placeholder="e.g. Mumbai"
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => setShowAddModal(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Send Request'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Teammate Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Photographer Info"
+        size="md"
+      >
+        <form onSubmit={handleUpdateMember} className="add-teammate-form">
+          <p className="modal-desc">Update how this photographer appears in your team. Phone number cannot be changed.</p>
+          
+          <div className="form-group">
+            <label>Photographer Name</label>
+            <input 
+              type="text" 
+              className="input-field" 
+              required
+              value={editForm.name}
+              onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Category</label>
+              <select 
+                className="input-field"
+                value={editForm.category}
+                onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+              >
+                <option value="Wedding">Wedding</option>
+                <option value="Portrait">Portrait</option>
+                <option value="Event">Event</option>
+                <option value="Fashion">Fashion</option>
+                <option value="General">General</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>City</label>
+              <input 
+                type="text" 
+                className="input-field"
+                value={editForm.city}
+                onChange={(e) => setEditForm({...editForm, city: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => setShowEditModal(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
       </Modal>
 
       <JobSelectionModal 

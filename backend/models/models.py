@@ -57,6 +57,11 @@ class TeamRequest(Base):
     status = Column(String, default="pending") # pending, accepted, declined
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Custom info entered by studio owner
+    display_name = Column(String)
+    display_category = Column(String)
+    display_city = Column(String)
+
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_requests")
     receiver = relationship("User", foreign_keys=[receiver_id], back_populates="received_requests")
 
@@ -82,16 +87,20 @@ class Team(Base):
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(Integer, ForeignKey("users.id"))
     member_id = Column(Integer, ForeignKey("users.id"))
+    
+    # Identity info preserved on studio owner's side
+    display_name = Column(String)
+    display_category = Column(String)
+    display_city = Column(String)
+    phone = Column(String)
 
 class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    title = Column(String)
     message = Column(String)
-    type = Column(String) # 'team_request', 'request_response', etc.
-    reference_id = Column(Integer, nullable=True) # e.g., team_request_id
+    redirect_to = Column(String) # e.g., '/team'
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

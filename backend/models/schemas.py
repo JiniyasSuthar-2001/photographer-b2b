@@ -47,7 +47,10 @@ class CollaborationResponse(BaseModel):
     total_pages: int
 
 class TeamRequestCreate(BaseModel):
-    receiver_id: int
+    phone: str
+    display_name: str
+    display_category: str
+    display_city: str
 
 class TeamRequestResponse(BaseModel):
     id: int
@@ -59,6 +62,11 @@ class TeamRequestResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class TeamMemberUpdate(BaseModel):
+    display_name: Optional[str] = None
+    display_category: Optional[str] = None
+    display_city: Optional[str] = None
+
 class UserSearchResponse(BaseModel):
     id: int
     full_name: str
@@ -69,10 +77,8 @@ class UserSearchResponse(BaseModel):
 class NotificationResponse(BaseModel):
     id: int
     user_id: int
-    title: str
     message: str
-    type: str
-    reference_id: Optional[int] = None
+    redirect_to: str
     is_read: bool
     created_at: datetime
 

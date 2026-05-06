@@ -63,7 +63,14 @@ def seed_data():
         models.Team.member_id == photographer.id
     ).first()
     if not team_member:
-        team_member = models.Team(owner_id=owner.id, member_id=photographer.id)
+        team_member = models.Team(
+            owner_id=owner.id, 
+            member_id=photographer.id,
+            display_name=photographer.full_name,
+            display_category=photographer.category,
+            display_city=photographer.city,
+            phone=photographer.phone
+        )
         db.add(team_member)
 
     # Create shared jobs
