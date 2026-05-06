@@ -182,6 +182,12 @@ export function reducer(state, action) {
         notifications: [action.payload, ...state.notifications],
       };
 
+    case 'SET_NOTIFICATIONS':
+      return {
+        ...state,
+        notifications: action.payload,
+      };
+
     // ── Toasts ────────────────────────────────────────────────────────────────
     case 'ADD_TOAST':
       return {

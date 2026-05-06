@@ -36,6 +36,7 @@ class Job(Base):
 
     owner = relationship("User", back_populates="jobs_owned")
     assignments = relationship("Assignment", back_populates="job")
+    requests = relationship("JobRequest", back_populates="job")
 
 class Assignment(Base):
     __tablename__ = "assignments"
@@ -77,7 +78,7 @@ class JobRequest(Base):
     status = Column(String, default="pending") # pending, accepted, declined
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    job = relationship("Job")
+    job = relationship("Job", back_populates="requests")
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
 

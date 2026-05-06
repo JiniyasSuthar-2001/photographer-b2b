@@ -41,4 +41,60 @@ export const authService = {
     }
 };
 
+export const notificationService = {
+    getNotifications: async (page = 1, limit = 20) => {
+        const response = await apiClient.get(`/notifications/?page=${page}&limit=${limit}`);
+        return response.data;
+    },
+    markAsRead: async (id) => {
+        const response = await apiClient.patch(`/notifications/${id}/read`);
+        return response.data;
+    },
+    markAllRead: async () => {
+        const response = await apiClient.patch('/notifications/read-all');
+        return response.data;
+    }
+};
+
+export const jobService = {
+    getJobs: async () => {
+        const response = await apiClient.get('/jobs/');
+        return response.data;
+    },
+    createJob: async (data) => {
+        const response = await apiClient.post('/jobs/', data);
+        return response.data;
+    }
+};
+
+export const requestService = {
+    getInvites: async () => {
+        const response = await apiClient.get('/requests/?role=receiver&status=pending');
+        return response.data;
+    },
+    getDeclinedInvites: async () => {
+        const response = await apiClient.get('/requests/?role=receiver&status=declined');
+        return response.data;
+    },
+    getAcceptedJobs: async () => {
+        const response = await apiClient.get('/requests/accepted-jobs');
+        return response.data;
+    },
+    sendRequest: async (data) => {
+        const response = await apiClient.post('/requests/', data);
+        return response.data;
+    },
+    respondToRequest: async (id, status) => {
+        const response = await apiClient.patch(`/requests/${id}?status=${status}`);
+        return response.data;
+    }
+};
+
+export const teamService = {
+    getCollaborations: async (memberId, page = 1) => {
+        const response = await apiClient.get(`/team/collaborations/${memberId}?page=${page}&limit=10`);
+        return response.data;
+    }
+};
+
 export default apiClient;

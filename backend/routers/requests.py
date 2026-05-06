@@ -45,7 +45,8 @@ async def send_job_request(
         title="New Job Invite",
         message=f"{current_user.full_name} has invited you to work on '{job_title}' as {request.role}.",
         type="job_invite",
-        reference_id=new_request.id
+        reference_id=new_request.id,
+        redirect_to="/job-hub"
     )
     db.add(notification)
     db.commit()
@@ -95,7 +96,8 @@ async def respond_to_job_request(
         title=f"Job Invite {status.capitalize()}",
         message=f"{current_user.full_name} has {status} your invite for '{job_title}'.",
         type="job_invite_response",
-        reference_id=job_request.id
+        reference_id=job_request.id,
+        redirect_to="/job-hub"
     )
     db.add(notification_sender)
 
@@ -106,7 +108,8 @@ async def respond_to_job_request(
         title=f"Job Invite {status.capitalize()}",
         message=f"You have {status} {sender_name}'s invite for '{job_title}'.",
         type="job_invite_response",
-        reference_id=job_request.id
+        reference_id=job_request.id,
+        redirect_to="/job-hub"
     )
     db.add(notification_receiver)
     db.commit()
@@ -146,3 +149,68 @@ async def get_eligible_jobs(
     ).all()
     
     return jobs
+
+@router.get("/")
+async def get_my_requests(
+    role: str = Query("receiver", pattern="^(sender|receiver)$"),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    query = db.query(models.JobRequest)
+    if role == "sender":
+        query = query.filter(models.JobRequest.sender_id == current_user.id)
+    else:
+        query = query.filter(models.JobRequest.receiver_id == current_user.id)
+    
+    if status:
+        query = query.filter(models.JobRequest.status == status)
+    
+    requests = query.order_by(models.JobRequest.created_at.desc()).all()
+    
+    # Enrich with job and sender/receiver details
+    result = []
+    for req in requests:
+        job = db.query(models.Job).filter(models.Job.id == req.job_id).first()
+        sender = db.query(models.User).filter(models.User.id == req.sender_id).first()
+        receiver = db.query(models.User).filter(models.User.id == req.receiver_id).first()
+        
+        result.append({
+            "id": req.id,
+            "job_id": req.job_id,
+            "job_title": job.title if job else "Unknown Job",
+            "job_date": job.date if job else None,
+            "sender_id": req.sender_id,
+            "sender_name": sender.full_name if sender else "Unknown",
+            "receiver_id": req.receiver_id,
+            "receiver_name": receiver.full_name if receiver else "Unknown",
+            "role": req.role,
+            "budget": req.budget,
+            "status": req.status,
+            "created_at": req.created_at
+        })
+    return result
+
+@router.get("/accepted-jobs")
+async def get_accepted_jobs(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # This specifically returns jobs where the user is an ASSIGNEE
+    assignments = db.query(models.Assignment).filter(models.Assignment.member_id == current_user.id).all()
+    
+    result = []
+    for assign in assignments:
+        job = db.query(models.Job).filter(models.Job.id == assign.job_id).first()
+        owner = db.query(models.User).filter(models.User.id == job.studio_owner_id).first() if job else None
+        
+        result.append({
+            "id": assign.id,
+            "job_id": assign.job_id,
+            "title": job.title if job else "Unknown Job",
+            "owner_name": owner.full_name if owner else "Unknown",
+            "date": job.date if job else None,
+            "role": assign.role,
+            "status": job.status if job else "unknown"
+        })
+    return result

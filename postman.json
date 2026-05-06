@@ -291,6 +291,24 @@
                     "response": []
                 },
                 {
+                    "name": "Get My Requests",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
                     "name": "Respond To Job Request",
                     "request": {
                         "method": "PATCH",
@@ -324,6 +342,25 @@
                                 "requests",
                                 "eligible-jobs",
                                 "{photographer_id}"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Accepted Jobs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/accepted-jobs",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests",
+                                "accepted-jobs"
                             ]
                         }
                     },

@@ -6,23 +6,23 @@ This document serves as a living registry of all API endpoints implemented in th
 
 ## 1. Authentication Layer (`/api/auth`)
 
-The authentication layer handles user registration and identity verification using Supabase Auth (GoTrue).
+The authentication layer handles user registration and identity verification using a custom implementation with JWT and bcrypt.
 
 ### POST `/signup`
-- Full Path: `http://localhost:8000/api/auth/signup`
-- Files Involved:
-  - Router: `backend/routers/auth.py`
-  - Service: `backend/services/auth_service.py`
-  - Database: `backend/db/database.py` (SQLite)
-  - Model: `backend/models/models.py` (SQLAlchemy User)
-  - Schema: `UserSignUp` in `backend/models/schemas.py`
-- Implementation Details:
-  - Receives `username` and `password`.
+- **Full Path**: `http://localhost:8000/api/auth/signup`
+- **Files Involved**:
+  - **Router**: `backend/routers/auth.py`
+  - **Service**: `backend/services/auth_service.py`
+  - **Database**: `backend/db/database.py` (SQLite)
+  - **Model**: `backend/models/models.py` (SQLAlchemy User)
+  - **Schema**: `UserSignUp` in `backend/models/schemas.py`
+- **Implementation Details**:
+  - Receives `username`, `password`, `phone`, `full_name`, etc.
   - Hashes the password using `bcrypt` via `passlib`.
   - Saves a new record in the `users` table in the local `lumiere.db` SQLite database.
-- Why this way?:
-  - Local Development**: SQLite requires zero setup and stores data in a local file, making it perfect for rapid prototyping.
-  - Control**: Implementing our own hashing and JWT logic gives us full control over the authentication lifecycle.
+- **Why this way?**:
+  - **Local Development**: SQLite requires zero setup and stores data in a local file, making it perfect for rapid prototyping.
+  - **Control**: Implementing our own hashing and JWT logic gives us full control over the authentication lifecycle without external dependencies.
 
 ### POST `/login`
 - **Full Path**: `http://localhost:8000/api/auth/login`
@@ -83,8 +83,20 @@ The team layer manages relationships between studio owners and photographers, in
 - **Full Path**: `http://localhost:8000/api/team/request/{id}`
 - **Implementation Details**:
   - Updates status to `accepted` or `declined`.
-  - If `accepted`, creates a permanent entry in the `team` table.
+  - If `accepted`, creates a permanent entry in the `team` table using the display info provided in the initial request.
+  - Generates notifications for both parties with `redirect_to: "/team"`.
 - **Rationale**: Completes the handshake loop for team membership.
+
+### PATCH `/{member_id}`
+- **Full Path**: `http://localhost:8000/api/team/{member_id}`
+- **Implementation Details**:
+  - Updates a team member's `display_name`, `display_category`, or `display_city`.
+- **Rationale**: Allows studio owners to personalize their team directory labels independent of the photographer's own profile.
+
+### DELETE `/{member_id}`
+- **Full Path**: `http://localhost:8000/api/team/{member_id}`
+- **Implementation Details**: Removes the relationship entry from the `team` table.
+- **Rationale**: Standard management for offboarding or removing photographers from the local roster.
 
 ### GET `/`
 - **Full Path**: `http://localhost:8000/api/team/`
@@ -108,6 +120,10 @@ Handles user alerts for team and job-related activities.
 - **Full Path**: `http://localhost:8000/api/notifications/{id}/read`
 - **Implementation Details**: Marks a specific notification as read.
 
+### PATCH `/notifications/read-all`
+- **Full Path**: `http://localhost:8000/api/notifications/read-all`
+- **Implementation Details**: Marks all unread notifications for the current user as read in a single batch.
+
 ---
 
 ## 4. Job Request Layer (`/api/requests`)
@@ -116,11 +132,14 @@ Handles professional job invites (distinct from team membership).
 
 ### POST `/requests/`
 - **Full Path**: `http://localhost:8000/api/requests/`
-- **Implementation Details**: Sends a job invite and triggers a notification.
+- **Implementation Details**:
+  - Sends a job invite and triggers a notification for the receiver with `redirect_to: "/job-hub"`.
 
 ### PATCH `/requests/{id}`
 - **Full Path**: `http://localhost:8000/api/requests/{id}`
-- **Implementation Details**: Accepts/declines a job invite, creating an assignment on acceptance.
+- **Implementation Details**:
+  - Accepts/declines a job invite, creating an assignment on acceptance.
+  - Triggers notifications for both parties with `redirect_to: "/job-hub"`.
 
 ### GET `/eligible-jobs/{photographer_id}`
 - **Full Path**: `http://localhost:8000/api/requests/eligible-jobs/{photographer_id}`
@@ -129,6 +148,23 @@ Handles professional job invites (distinct from team membership).
   - Matches the job `category` with the photographer's specialty.
   - Excludes jobs where the photographer is already invited or assigned.
 - **Rationale**: Smart filtering for the invitation workflow.
+
+### GET `/`
+- **Full Path**: `http://localhost:8000/api/requests/`
+- **Query Parameters**:
+  - `role`: "sender" or "receiver" (default: "receiver")
+  - `status`: Filter by status (optional)
+- **Implementation Details**:
+  - Returns a list of job requests associated with the user.
+  - Enriches results with job title, date, and user names.
+- **Rationale**: Primary data source for the "Invites" tab in the Job Hub.
+
+### GET `/accepted-jobs`
+- **Full Path**: `http://localhost:8000/api/requests/accepted-jobs`
+- **Implementation Details**:
+  - Returns assignments where the current user is the photographer.
+  - Includes owner details and job status.
+- **Rationale**: Powers the "Accepted Jobs" view for photographers.
 
 ---
 
@@ -165,5 +201,5 @@ Handles the lifecycle of professional photography assignments.
 2. **Layering**:
    - **Routers**: Only handle HTTP status codes and endpoint definitions.
    - **Services**: Contain the actual logic and database calls.
-   - **DB**: Provides the Supabase client instance.
+   - **DB**: Provides the SQLAlchemy `SessionLocal` instance via the `get_db` dependency.
 3. **Error Handling**: Uses FastAPI's `HTTPException` to return consistent JSON error objects (e.g., `{"detail": "Error message"}`).
