@@ -1,6 +1,22 @@
 /* ── Dashboard ────────────────────────────────────────────────────────────── */
 .dashboard { display: flex; flex-direction: column; gap: var(--space-5); }
 
+.toggle-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -327,3 +343,19 @@
 }
 
 .btn-danger:hover { background: rgba(244,63,94,0.15); }
+
+.fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent-blue);
+  color: #fff;
+  padding: 12px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+}

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from db.database import get_db
 from models import models
 from models.schemas import CollaborationResponse, UserSearchResponse, TeamRequestCreate, TeamRequestResponse, TeamMemberUpdate
@@ -45,6 +45,60 @@ async def get_collaborations(
         "page": page,
         "total_pages": total_pages
     }
+
+@router.get("/top-photographers")
+async def get_top_photographers(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Analytics helper endpoint used by the Top Photographers widget.
+    Keeps existing APIs stable while exposing a role-aware aggregate for
+    collaboration-heavy analytics screens.
+    """
+    team_entries = db.query(models.Team).filter(models.Team.owner_id == current_user.id).all()
+    result = []
+
+    for entry in team_entries:
+        member_id = entry.member_id
+
+        completed_count = db.query(models.Assignment).\
+            join(models.Job, models.Assignment.job_id == models.Job.id).\
+            filter(and_(
+                models.Job.studio_owner_id == current_user.id,
+                models.Assignment.member_id == member_id,
+                models.Job.status == "completed"
+            )).count()
+
+        latest_date = db.query(func.max(models.Job.date)).\
+            join(models.Assignment, models.Job.id == models.Assignment.job_id).\
+            filter(and_(
+                models.Job.studio_owner_id == current_user.id,
+                models.Assignment.member_id == member_id
+            )).scalar()
+
+        earnings_generated = db.query(func.coalesce(func.sum(models.JobRequest.budget), 0)).\
+            join(models.Job, models.JobRequest.job_id == models.Job.id).\
+            filter(and_(
+                models.Job.studio_owner_id == current_user.id,
+                models.JobRequest.receiver_id == member_id,
+                models.JobRequest.status == "accepted"
+            )).scalar() or 0
+
+        # Lightweight rating heuristic for analytics ranking while keeping schema stable.
+        rating = min(5.0, round(4.0 + (completed_count * 0.08), 1))
+
+        result.append({
+            "member_id": member_id,
+            "photographer_name": entry.display_name,
+            "jobs_done_together": completed_count,
+            "earnings_generated": int(earnings_generated),
+            "rating": rating,
+            "latest_collaboration_date": latest_date
+        })
+
+    result.sort(key=lambda item: item["jobs_done_together"], reverse=True)
+    return result
 
 @router.get("/users/search", response_model=UserSearchResponse)
 async def search_user(phone: str, db: Session = Depends(get_db)):
@@ -99,7 +153,7 @@ async def send_team_request(
     notification = models.Notification(
         user_id=receiver.id,
         message=f"{current_user.full_name} has invited you to join their team.",
-        redirect_to="/notifications" # Will handle in bell dropdown
+        redirect_to="/team"
     )
     db.add(notification)
     db.commit()

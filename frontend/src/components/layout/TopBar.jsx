@@ -23,7 +23,7 @@ const PAGE_TITLES_FREELANCER = {
 
 export default function TopBar() {
   const { state, dispatch } = useApp();
-  const { user } = state;
+  const { user, activeDashboardRole } = state;
   const location = useLocation();
 
   const titles = user.mode === 'freelancer' ? PAGE_TITLES_FREELANCER : PAGE_TITLES;
@@ -42,7 +42,7 @@ export default function TopBar() {
         {/* Mode Chip */}
         <div className="topbar-mode-chip">
           <span className="topbar-mode-dot" />
-          {user.mode === 'freelancer' ? 'Freelancer' : 'Studio Owner'}
+          {activeDashboardRole === 'freelancer' ? 'Freelancer' : 'Photographer'}
         </div>
 
         {/* Notifications */}

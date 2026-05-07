@@ -1,70 +1,66 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Clock, Plus, User, Check, X, MapPin } from 'lucide-react';
 import { useApp, usePermission } from '../context/AppContext';
-import { 
-  Briefcase, MapPin, Clock, Users, Plus, Send, Check, X, 
-  ChevronRight, Tag, Building, Search, User
-} from 'lucide-react';
 import { jobService, requestService, teamService } from '../services/api';
-import Avatar from '../components/ui/Avatar';
 import { StatusBadge } from '../components/ui/Badge';
-import DatePicker from '../components/ui/DatePicker';
 import './JobHub.css';
-
-const ROLE_TYPES = {
-  'Lead': { color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', label: 'Lead' },
-  'Candid': { color: '#10B981', bg: 'rgba(16,185,129,0.1)', label: 'Candid' },
-  'Drone': { color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', label: 'Drone' },
-  'Reel': { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', label: 'Reel' },
-};
 
 export default function JobHub() {
   const { state, dispatch, addToast } = useApp();
-  const { user } = state;
   const { canPostJob } = usePermission();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeMainTab, setActiveMainTab] = useState('my-jobs'); // 'my-jobs' | 'accepted-jobs'
-  const [activeSubTab, setActiveSubTab] = useState('accepted'); // 'accepted' | 'invites' (for accepted-jobs)
-  const [jobFilter, setJobFilter] = useState('all'); // 'all' | 'current' | 'yet_to_assign' | 'past'
+  // Deep-link contract used by Dashboard cards + Notification redirects.
+  const [activeSubTab, setActiveSubTab] = useState(searchParams.get('tab') || 'accepted');
+  const [jobFilter, setJobFilter] = useState('all');
 
   const [myJobs, setMyJobs] = useState([]);
-  const [acceptedJobs, setAcceptedJobs] = useState([]);
-  const [invites, setInvites] = useState([]);
-  const [declinedInvites, setDeclinedInvites] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
   const [showNewJob, setShowNewJob] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(null);
   const [showCollaborationModal, setShowCollaborationModal] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [activeMainTab, activeSubTab, jobFilter]);
+  const activeMainTab = state.activeMainTab || searchParams.get('main') || 'my-jobs';
 
-  const fetchData = async () => {
+  useEffect(() => {
+    const main = searchParams.get('main');
+    const tab = searchParams.get('tab');
+    if (main) dispatch({ type: 'SET_ACTIVE_MAIN_TAB', payload: main });
+    if (tab) setActiveSubTab(tab);
+  }, [dispatch, searchParams]);
+
+  const syncHubQuery = (main, tab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('main', main);
+    if (tab) next.set('tab', tab);
+    else next.delete('tab');
+    setSearchParams(next, { replace: true });
+  };
+
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       if (activeMainTab === 'my-jobs') {
         const data = await jobService.getJobs();
         setMyJobs(data);
+        dispatch({ type: 'SET_LATEST_JOBS', payload: data.slice(0, 4) });
+      } else if (activeSubTab === 'accepted') {
+        const data = await requestService.getAcceptedJobs();
+        dispatch({ type: 'SET_ACCEPTED_JOBS', payload: data });
       } else {
-        if (activeSubTab === 'accepted') {
-          const data = await requestService.getAcceptedJobs();
-          setAcceptedJobs(data);
-        } else if (activeSubTab === 'invites') {
-          const data = await requestService.getInvites();
-          setInvites(data);
-        } else {
-          const data = await requestService.getDeclinedInvites();
-          setDeclinedInvites(data);
-        }
+        const data = await requestService.getInvites();
+        dispatch({ type: 'SET_INVITES', payload: data });
       }
-    } catch (err) {
-      console.error('Fetch error:', err);
-      addToast('Failed to load data', 'error');
+    } catch {
+      addToast('Failed to load Job Hub data', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeMainTab, activeSubTab, addToast, dispatch]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleCreateJob = async (jobData) => {
     try {
@@ -72,7 +68,7 @@ export default function JobHub() {
       addToast('Job created successfully', 'success');
       setShowNewJob(false);
       fetchData();
-    } catch (err) {
+    } catch {
       addToast('Failed to create job', 'error');
     }
   };
@@ -82,38 +78,33 @@ export default function JobHub() {
       await requestService.respondToRequest(id, status);
       addToast(`Invite ${status}`, 'success');
       fetchData();
-    } catch (err) {
+    } catch {
       addToast('Error responding to invite', 'error');
     }
   };
 
-  const filterMyJobs = () => {
+  const filterMyJobs = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return myJobs.filter(job => {
       const jobDate = new Date(job.date);
       jobDate.setHours(0, 0, 0, 0);
-
       switch (jobFilter) {
-        case 'current': 
-          return job.accepted_count > 0 && jobDate.getTime() === today.getTime();
-        case 'yet_to_assign': 
-          return job.accepted_count === 0 && job.status !== 'completed';
-        case 'past': 
-          return job.status === 'completed' || jobDate.getTime() < today.getTime();
-        default: 
-          return true;
+        case 'current': return jobDate.getTime() === today.getTime();
+        case 'future': return jobDate.getTime() > today.getTime();
+        case 'past': return jobDate.getTime() < today.getTime() || job.status === 'completed';
+        default: return true;
       }
     });
-  };
+  }, [jobFilter, myJobs]);
 
   return (
     <div className="jobhub-page">
       <div className="jobhub-header">
         <div>
           <h1 className="page-title">Job Hub</h1>
-          <p className="page-subtitle">Manage assignments and invitations</p>
+          <p className="page-subtitle">Connected job pipeline across owner jobs and freelancer assignments</p>
         </div>
         {canPostJob && (
           <button className="btn btn-primary" onClick={() => setShowNewJob(true)}>
@@ -123,15 +114,21 @@ export default function JobHub() {
       </div>
 
       <div className="job-hub-toggles">
-        <button 
+        <button
           className={`toggle-btn ${activeMainTab === 'my-jobs' ? 'active' : ''}`}
-          onClick={() => setActiveMainTab('my-jobs')}
+          onClick={() => {
+            dispatch({ type: 'SET_ACTIVE_MAIN_TAB', payload: 'my-jobs' });
+            syncHubQuery('my-jobs');
+          }}
         >
           My Jobs
         </button>
-        <button 
+        <button
           className={`toggle-btn ${activeMainTab === 'accepted-jobs' ? 'active' : ''}`}
-          onClick={() => setActiveMainTab('accepted-jobs')}
+          onClick={() => {
+            dispatch({ type: 'SET_ACTIVE_MAIN_TAB', payload: 'accepted-jobs' });
+            syncHubQuery('accepted-jobs', activeSubTab);
+          }}
         >
           Accepted Jobs
         </button>
@@ -143,78 +140,53 @@ export default function JobHub() {
             {[
               { id: 'all', label: 'All' },
               { id: 'current', label: 'Current' },
-              { id: 'yet_to_assign', label: 'Yet to Assign' },
-              { id: 'past', label: 'Past' }
+              { id: 'future', label: 'Future' },
+              { id: 'past', label: 'Past' },
             ].map(t => (
-              <button 
-                key={t.id} 
-                className={`sub-tab ${jobFilter === t.id ? 'active' : ''}`}
-                onClick={() => setJobFilter(t.id)}
-              >
+              <button key={t.id} className={`sub-tab ${jobFilter === t.id ? 'active' : ''}`} onClick={() => setJobFilter(t.id)}>
                 {t.label}
               </button>
             ))}
           </div>
 
           <div className="job-grid">
-            {isLoading ? (
-              <div className="loading-state">Loading jobs...</div>
-            ) : filterMyJobs().length === 0 ? (
+            {isLoading ? <div className="loading-state">Loading jobs...</div> : filterMyJobs.length === 0 ? (
               <div className="empty-state">No jobs found</div>
-            ) : (
-              filterMyJobs().map(job => (
-                <div key={job.id} className="job-card">
-                  <div className="job-card-header">
-                    <h3>{job.title}</h3>
-                    <StatusBadge status={job.status} />
-                  </div>
-                  <div className="job-card-body">
-                    <p><Clock size={14} /> {new Date(job.date).toLocaleDateString('en-GB')}</p>
-                    <p><Tag size={14} /> {job.category}</p>
-                    <div className="job-counts">
-                      {job.pending_count > 0 && <span className="count-badge pending">{job.pending_count} Pending</span>}
-                      {job.accepted_count > 0 && <span className="count-badge accepted">{job.accepted_count} Accepted</span>}
-                    </div>
-                  </div>
-                  <div className="job-card-footer">
-                    <button className="btn btn-secondary btn-sm" onClick={() => setShowRequestModal(job)}>
-                      <Send size={14} /> Send Request
-                    </button>
+            ) : filterMyJobs.map(job => (
+              <div key={job.id} className="job-card">
+                <div className="job-card-header">
+                  <h3>{job.title}</h3>
+                  <StatusBadge status={job.status} />
+                </div>
+                <div className="job-card-body">
+                  <p><Clock size={14} /> {new Date(job.date).toLocaleDateString('en-GB')}</p>
+                  <p><MapPin size={14} /> {job.location || 'Location pending'}</p>
+                  <div className="job-counts">
+                    {job.pending_count > 0 && <span className="count-badge pending">{job.pending_count} Pending</span>}
+                    {job.accepted_count > 0 && <span className="count-badge accepted">{job.accepted_count} Accepted</span>}
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
       ) : (
         <div className="accepted-jobs-section">
           <div className="sub-tabs">
-            <button 
-              className={`sub-tab ${activeSubTab === 'accepted' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('accepted')}
-            >
+            <button className={`sub-tab ${activeSubTab === 'accepted' ? 'active' : ''}`} onClick={() => { setActiveSubTab('accepted'); syncHubQuery('accepted-jobs', 'accepted'); }}>
               Accepted Jobs
             </button>
-            <button 
-              className={`sub-tab ${activeSubTab === 'invites' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('invites')}
-            >
-              Invites {invites.length > 0 && <span className="badge">{invites.length}</span>}
-            </button>
-            <button 
-              className={`sub-tab ${activeSubTab === 'declined' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('declined')}
-            >
-              Declined Jobs
+            <button className={`sub-tab ${activeSubTab === 'invites' ? 'active' : ''}`} onClick={() => { setActiveSubTab('invites'); syncHubQuery('accepted-jobs', 'invites'); }}>
+              Invites {state.invites.length > 0 && <span className="badge">{state.invites.length}</span>}
             </button>
           </div>
 
           <div className="job-grid">
             {activeSubTab === 'accepted' ? (
-              acceptedJobs.length === 0 ? (
+              state.acceptedJobs.length === 0 ? (
                 <div className="empty-state">No accepted jobs yet</div>
               ) : (
-                acceptedJobs.map(job => (
+                state.acceptedJobs.map(job => (
                   <div key={job.id} className="job-card accepted">
                     <div className="job-card-header">
                       <h3>{job.title}</h3>
@@ -225,68 +197,43 @@ export default function JobHub() {
                         <User size={14} /> {job.owner_name}
                       </p>
                       <p><Clock size={14} /> {new Date(job.date).toLocaleDateString('en-GB')}</p>
+                      <p><MapPin size={14} /> {job.location || 'Location pending'}</p>
                     </div>
                   </div>
                 ))
               )
-            ) : activeSubTab === 'invites' ? (
-              invites.length === 0 ? (
-                <div className="empty-state">No pending invites</div>
-              ) : (
-                invites.map(invite => (
-                  <div key={invite.id} className="job-card invite">
-                    <div className="job-card-header">
-                      <h3>{invite.job_title}</h3>
-                      <span className="role-tag">{invite.role}</span>
-                    </div>
-                    <div className="invite-details">
-                      <p><strong>From:</strong> {invite.sender_name}</p>
-                      <p><strong>Date:</strong> {new Date(invite.job_date).toLocaleDateString('en-GB')}</p>
-                      <p><strong>Budget:</strong> ₹{invite.budget}</p>
-                    </div>
-                    <div className="invite-actions">
-                      <button className="btn btn-primary btn-sm" onClick={() => handleRespondToInvite(invite.id, 'accepted')}>
-                        <Check size={14} /> Accept
-                      </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleRespondToInvite(invite.id, 'declined')}>
-                        <X size={14} /> Decline
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )
+            ) : state.invites.length === 0 ? (
+              <div className="empty-state">No pending invites</div>
             ) : (
-              declinedInvites.length === 0 ? (
-                <div className="empty-state">No declined jobs</div>
-              ) : (
-                declinedInvites.map(invite => (
-                  <div key={invite.id} className="job-card declined">
-                    <div className="job-card-header">
-                      <h3>{invite.job_title}</h3>
-                      <span className="role-tag">{invite.role}</span>
-                    </div>
-                    <div className="invite-details">
-                      <p><strong>Studio:</strong> {invite.sender_name}</p>
-                      <p><strong>Date:</strong> {new Date(invite.job_date).toLocaleDateString('en-GB')}</p>
-                      <p><strong>Budget:</strong> ₹{invite.budget}</p>
-                    </div>
+              state.invites.map(invite => (
+                <div key={invite.id} className="job-card invite">
+                  <div className="job-card-header">
+                    <h3>{invite.job_title}</h3>
+                    <span className="role-tag">{invite.role}</span>
                   </div>
-                ))
-              )
+                  <div className="invite-details">
+                    <p><strong>From:</strong> {invite.sender_name}</p>
+                    <p><strong>Date:</strong> {new Date(invite.job_date).toLocaleDateString('en-GB')}</p>
+                  </div>
+                  <div className="invite-actions">
+                    <button className="btn btn-primary btn-sm" onClick={() => handleRespondToInvite(invite.id, 'accepted')}>
+                      <Check size={14} /> Accept
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleRespondToInvite(invite.id, 'declined')}>
+                      <X size={14} /> Decline
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
       )}
 
-      {/* Collaboration Modal */}
       {showCollaborationModal && (
-        <CollaborationModal 
-          job={showCollaborationModal} 
-          onClose={() => setShowCollaborationModal(null)} 
-        />
+        <CollaborationModal job={showCollaborationModal} onClose={() => setShowCollaborationModal(null)} />
       )}
 
-      {/* New Job Modal (Simplified) */}
       {showNewJob && (
         <div className="modal-overlay">
           <div className="modal">
@@ -297,7 +244,7 @@ export default function JobHub() {
               handleCreateJob({
                 title: fd.get('title'),
                 category: fd.get('category'),
-                date: fd.get('date')
+                date: fd.get('date'),
               });
             }}>
               <input name="title" className="input-field" placeholder="Job Title" required />
@@ -324,14 +271,12 @@ function CollaborationModal({ job, onClose }) {
       try {
         const data = await teamService.getCollaborations(job.owner_id, history.page);
         setHistory(data);
-      } catch (err) {
-        console.error(err);
       } finally {
         setLoading(false);
       }
     };
     fetchHistory();
-  }, [job.owner_id, history.page]);
+  }, [history.page, job.owner_id]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -341,9 +286,7 @@ function CollaborationModal({ job, onClose }) {
           <button onClick={onClose}><X size={20} /></button>
         </div>
         <div className="modal-body">
-          {loading ? (
-            <div>Loading...</div>
-          ) : history.data.length === 0 ? (
+          {loading ? <div>Loading...</div> : history.data.length === 0 ? (
             <div className="empty-state">No shared work history yet.</div>
           ) : (
             <>
@@ -359,19 +302,9 @@ function CollaborationModal({ job, onClose }) {
                 ))}
               </div>
               <div className="modal-pagination">
-                <button 
-                  disabled={history.page === 1} 
-                  onClick={() => setHistory(h => ({ ...h, page: h.page - 1 }))}
-                >
-                  &lt;
-                </button>
+                <button disabled={history.page === 1} onClick={() => setHistory(h => ({ ...h, page: h.page - 1 }))}>&lt;</button>
                 <span>Page {history.page} of {history.total_pages}</span>
-                <button 
-                  disabled={history.page === history.total_pages} 
-                  onClick={() => setHistory(h => ({ ...h, page: h.page + 1 }))}
-                >
-                  &gt;
-                </button>
+                <button disabled={history.page === history.total_pages} onClick={() => setHistory(h => ({ ...h, page: h.page + 1 }))}>&gt;</button>
               </div>
             </>
           )}

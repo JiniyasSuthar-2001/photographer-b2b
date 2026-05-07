@@ -19,6 +19,13 @@ export function reducer(state, action) {
     case 'SET_AUTHORITY':
       return { ...state, user: { ...state.user, authority: action.payload } };
 
+    // Shared role toggle that drives Dashboard + Analytics role-aware rendering.
+    case 'SET_ACTIVE_DASHBOARD_ROLE':
+      return { ...state, activeDashboardRole: action.payload };
+
+    case 'SET_ACTIVE_MAIN_TAB':
+      return { ...state, activeMainTab: action.payload };
+
     case 'UPDATE_USER':
       return { ...state, user: { ...state.user, ...action.payload } };
 
@@ -74,10 +81,11 @@ export function reducer(state, action) {
       };
     }
 
-    case 'DELETE_AVAILABILITY':
+    case 'DELETE_AVAILABILITY': {
       const newAvail = { ...state.availability };
       delete newAvail[action.payload];
       return { ...state, availability: newAvail };
+    }
 
     case 'ADD_TASK':
       return { ...state, jobTasks: [...state.jobTasks, action.payload] };
@@ -168,25 +176,62 @@ export function reducer(state, action) {
         notifications: state.notifications.map(n =>
           n.id === action.payload ? { ...n, read: true } : n
         ),
+        unreadCount: Math.max(0, (state.unreadCount ?? state.notifications.filter(n => !n.is_read && !n.read).length) - 1),
       };
 
     case 'MARK_ALL_READ':
       return {
         ...state,
         notifications: state.notifications.map(n => ({ ...n, read: true })),
+        unreadCount: 0,
       };
 
     case 'ADD_NOTIFICATION':
       return {
         ...state,
         notifications: [action.payload, ...state.notifications],
+        unreadCount: (state.unreadCount ?? 0) + 1,
       };
 
     case 'SET_NOTIFICATIONS':
       return {
         ...state,
         notifications: action.payload,
+        unreadCount: action.payload.filter(n => !n.is_read && !n.read).length,
       };
+
+    case 'SET_INVITES':
+      return { ...state, invites: action.payload };
+
+    case 'SET_ACCEPTED_JOBS':
+      return { ...state, acceptedJobs: action.payload };
+
+    case 'SET_COLLABORATIONS':
+      return { ...state, collaborations: { ...state.collaborations, ...action.payload } };
+
+    case 'SET_DASHBOARD_STATS':
+      return { ...state, dashboardStats: action.payload };
+
+    case 'SET_LATEST_REQUESTS':
+      return { ...state, latestRequests: action.payload };
+
+    case 'SET_LATEST_JOBS':
+      return { ...state, latestJobs: action.payload };
+
+    case 'SET_NEXT_WEEK_JOBS':
+      return { ...state, nextWeekJobs: action.payload };
+
+    case 'SET_EARNINGS_BY_ROLE':
+      return { ...state, earningsByRole: action.payload };
+
+    case 'SET_ANALYTICS_ROLE':
+      return { ...state, analyticsRole: action.payload };
+
+    case 'SET_ANALYTICS_TIMEFRAME':
+      return { ...state, analyticsTimeframe: action.payload };
+
+    case 'SET_ANALYTICS_DATA':
+      return { ...state, analyticsData: action.payload };
 
     // ── Toasts ────────────────────────────────────────────────────────────────
     case 'ADD_TOAST':

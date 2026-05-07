@@ -42,11 +42,9 @@ async def send_job_request(
     # Create notification for receiver
     notification = models.Notification(
         user_id=request.receiver_id,
-        title="New Job Invite",
         message=f"{current_user.full_name} has invited you to work on '{job_title}' as {request.role}.",
-        type="job_invite",
-        reference_id=new_request.id,
-        redirect_to="/job-hub"
+        # Deep-link into Invites tab so bell click lands in the correct job-hub context.
+        redirect_to="/job-hub?main=accepted-jobs&tab=invites"
     )
     db.add(notification)
     db.commit()
@@ -93,11 +91,9 @@ async def respond_to_job_request(
     job_title = job_request.job.title if job_request.job else "job"
     notification_sender = models.Notification(
         user_id=job_request.sender_id,
-        title=f"Job Invite {status.capitalize()}",
         message=f"{current_user.full_name} has {status} your invite for '{job_title}'.",
-        type="job_invite_response",
-        reference_id=job_request.id,
-        redirect_to="/job-hub"
+        # Accepted should route the owner to My Jobs; declined keeps owner in invite workflow.
+        redirect_to="/job-hub?main=my-jobs" if status == "accepted" else "/job-hub?main=accepted-jobs&tab=invites"
     )
     db.add(notification_sender)
 
@@ -105,11 +101,8 @@ async def respond_to_job_request(
     sender_name = db.query(models.User).filter(models.User.id == job_request.sender_id).first().full_name
     notification_receiver = models.Notification(
         user_id=current_user.id,
-        title=f"Job Invite {status.capitalize()}",
         message=f"You have {status} {sender_name}'s invite for '{job_title}'.",
-        type="job_invite_response",
-        reference_id=job_request.id,
-        redirect_to="/job-hub"
+        redirect_to="/job-hub?main=accepted-jobs&tab=invites"
     )
     db.add(notification_receiver)
     db.commit()
@@ -208,9 +201,11 @@ async def get_accepted_jobs(
             "id": assign.id,
             "job_id": assign.job_id,
             "title": job.title if job else "Unknown Job",
+            "owner_id": owner.id if owner else None,
             "owner_name": owner.full_name if owner else "Unknown",
             "date": job.date if job else None,
             "role": assign.role,
+            "location": getattr(job, "location", None) if job else None,
             "status": job.status if job else "unknown"
         })
     return result

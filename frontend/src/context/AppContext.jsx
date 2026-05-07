@@ -26,6 +26,7 @@ filteredState.notifications = rawInitialState.notifications.filter(notif => {
   const job = rawInitialState.jobs.find(j => notif.message.includes(j.title));
   return job ? getFirstDate(job.date) > today : true;
 });
+filteredState.unreadCount = filteredState.notifications.filter(n => !n.read && !n.is_read).length;
 
 export const AppContext = createContext(null);
 
@@ -55,7 +56,7 @@ export function useApp() {
 // ── Permission helpers ────────────────────────────────────────────────────────
 export function usePermission() {
   const { state } = useApp();
-  const { mode, authority } = state.user;
+  const { mode: _mode, authority: _authority } = state.user;
 
   return {
     isStudioOwner:     true,

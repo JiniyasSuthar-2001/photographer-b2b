@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Plus, Search, ChevronLeft, ChevronRight, UserPlus, Clock, Send, Edit2, Trash2 } from 'lucide-react';
 import Avatar from '../components/ui/Avatar';
@@ -12,6 +13,7 @@ const API_BASE_URL = 'http://localhost:8000/api';
 export default function Team() {
   const { state, addToast } = useApp();
   const { team } = state;
+  const [searchParams] = useSearchParams();
   
   // Collaboration History State
   const [selectedPhotographer, setSelectedPhotographer] = useState(null);
@@ -79,6 +81,19 @@ export default function Team() {
   useEffect(() => {
     fetchTeam();
   }, []);
+
+  useEffect(() => {
+    // Cross-page dependency:
+    // Analytics row click deep-links here with memberId + openHistory query params.
+    const memberId = Number(searchParams.get('memberId'));
+    const shouldOpen = searchParams.get('openHistory') === '1';
+    if (!shouldOpen || !memberId || teamMembers.length === 0) return;
+    const member = teamMembers.find(item => Number(item.id) === memberId);
+    if (member) {
+      setSelectedPhotographer(member);
+      setPage(1);
+    }
+  }, [searchParams, teamMembers]);
 
   const handleNameClick = (member) => {
     setSelectedPhotographer(member);

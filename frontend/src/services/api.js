@@ -68,6 +68,12 @@ export const jobService = {
 };
 
 export const requestService = {
+    getRequests: async ({ role = 'receiver', status } = {}) => {
+        const params = new URLSearchParams({ role });
+        if (status) params.set('status', status);
+        const response = await apiClient.get(`/requests/?${params.toString()}`);
+        return response.data;
+    },
     getInvites: async () => {
         const response = await apiClient.get('/requests/?role=receiver&status=pending');
         return response.data;
@@ -91,8 +97,25 @@ export const requestService = {
 };
 
 export const teamService = {
+    getTeam: async () => {
+        const response = await apiClient.get('/team/');
+        return response.data;
+    },
     getCollaborations: async (memberId, page = 1) => {
         const response = await apiClient.get(`/team/collaborations/${memberId}?page=${page}&limit=10`);
+        return response.data;
+    }
+};
+
+export const dashboardService = {
+    getMyJobs: jobService.getJobs,
+    getInvites: requestService.getInvites,
+    getAcceptedJobs: requestService.getAcceptedJobs,
+};
+
+export const analyticsService = {
+    getTopPhotographers: async () => {
+        const response = await apiClient.get('/team/top-photographers');
         return response.data;
     }
 };

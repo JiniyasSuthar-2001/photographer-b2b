@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Clock, Check, ChevronRight } from 'lucide-react';
+import { Bell, Clock, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { notificationService } from '../../services/api';
@@ -12,7 +12,7 @@ export default function NotificationBell() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = state.unreadCount ?? notifications.filter(n => !n.is_read && !n.read).length;
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -41,7 +41,9 @@ export default function NotificationBell() {
 
   const handleNotificationClick = async (notif) => {
     try {
-      if (!notif.is_read) {
+      // Notification lifecycle:
+      // 1) mark as read 2) sync shared unread counter 3) redirect to linked workflow page.
+      if (!notif.is_read && !notif.read) {
         await notificationService.markAsRead(notif.id);
         dispatch({ type: 'MARK_NOTIFICATION_READ', payload: notif.id });
       }
