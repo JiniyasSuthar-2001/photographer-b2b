@@ -55,9 +55,6 @@ export function useApp() {
 
 // ── Permission helpers ────────────────────────────────────────────────────────
 export function usePermission() {
-  const { state } = useApp();
-  const { mode: _mode, authority: _authority } = state.user;
-
   return {
     isStudioOwner:     true,
     isFreelancer:      true,

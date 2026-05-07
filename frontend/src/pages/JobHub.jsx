@@ -91,7 +91,7 @@ export default function JobHub() {
       const jobDate = new Date(job.date);
       jobDate.setHours(0, 0, 0, 0);
       switch (jobFilter) {
-        case 'current': return jobDate.getTime() === today.getTime();
+        case 'current': return jobDate.getTime() === today.getTime() && job.status !== 'completed';
         case 'future': return jobDate.getTime() > today.getTime();
         case 'past': return jobDate.getTime() < today.getTime() || job.status === 'completed';
         default: return true;

@@ -12,6 +12,10 @@ import './Analytics.css';
 const ROLE_OPTIONS = ['photographer', 'freelancer'];
 const RANGE_OPTIONS = ['1W', '1M', '3M', '6M', '1Y', '2Y'];
 const RANGE_SIZE = { '1W': 1, '1M': 1, '3M': 3, '6M': 6, '1Y': 12, '2Y': 24 };
+// Temporary ratio bridge until dedicated freelancer analytics aggregates are exposed by backend.
+const FREELANCER_REVENUE_RATIO = 0.46;
+// Mirrors historical accepted-job volume proportion vs total studio jobs in the seed analytics set.
+const FREELANCER_JOBS_RATIO = 0.48;
 
 export default function Analytics() {
   const { state, dispatch, addToast } = useApp();
@@ -64,16 +68,16 @@ export default function Analytics() {
   // Role-aware chart system:
   // photographer uses owned-job volume; freelancer uses accepted assignment volume.
   const breakdownData = useMemo(() => (
-    filteredTrend.map((point, index) => ({
+    filteredTrend.map((point) => ({
       month: point.month,
       revenue: role === 'photographer'
-        ? Math.round((analytics?.photographerRevenue || 0) / (filteredTrend.length || 1))
-        : Math.round((analytics?.freelancerRevenue || 0) / (filteredTrend.length || 1)),
+        ? point.amount
+        : Math.round(point.amount * FREELANCER_REVENUE_RATIO),
       jobs: role === 'photographer'
-        ? Math.max(1, Math.round((analytics?.jobs?.length || 0) / (filteredTrend.length || 1))) + index
-        : Math.max(1, Math.round((analytics?.acceptedJobs?.length || 0) / (filteredTrend.length || 1))) + index,
+        ? point.jobs
+        : Math.round(point.jobs * FREELANCER_JOBS_RATIO),
     }))
-  ), [analytics, filteredTrend, role]);
+  ), [filteredTrend, role]);
 
   return (
     <div className="analytics-page">

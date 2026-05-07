@@ -8,6 +8,13 @@ from routers.auth import get_current_user
 import math
 
 router = APIRouter(prefix="/team", tags=["Team"])
+# Analytics heuristic for collaboration ranking:
+# starts at 4.0 to reflect invited/approved collaborators with baseline trust,
+# adds 0.08 per completed shared job to reward repeat delivery,
+# capped at 5.0 to stay aligned with the platform's 5-star scoring scale.
+BASE_RATING = 4.0
+RATING_INCREMENT_PER_JOB = 0.08
+MAX_RATING = 5.0
 
 @router.get("/collaborations/{member_id}", response_model=CollaborationResponse)
 async def get_collaborations(
@@ -86,7 +93,7 @@ async def get_top_photographers(
             )).scalar() or 0
 
         # Lightweight rating heuristic for analytics ranking while keeping schema stable.
-        rating = min(5.0, round(4.0 + (completed_count * 0.08), 1))
+        rating = min(MAX_RATING, round(BASE_RATING + (completed_count * RATING_INCREMENT_PER_JOB), 1))
 
         result.append({
             "member_id": member_id,

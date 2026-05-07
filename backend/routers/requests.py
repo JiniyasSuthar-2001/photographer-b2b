@@ -205,6 +205,7 @@ async def get_accepted_jobs(
             "owner_name": owner.full_name if owner else "Unknown",
             "date": job.date if job else None,
             "role": assign.role,
+            # Backward-compatible payload: keep null-safe until `jobs.location` is formally added/migrated.
             "location": getattr(job, "location", None) if job else None,
             "status": job.status if job else "unknown"
         })

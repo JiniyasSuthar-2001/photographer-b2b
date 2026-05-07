@@ -170,14 +170,18 @@ export function reducer(state, action) {
       };
 
     // ── Notifications ─────────────────────────────────────────────────────────
-    case 'MARK_NOTIFICATION_READ':
+    case 'MARK_NOTIFICATION_READ': {
+      // Handles both API payloads (`is_read`) and local demo payloads (`read`) consistently.
+      // If unreadCount is not initialized yet, compute it from the current array first.
+      const currentUnread = state.unreadCount ?? state.notifications.filter(n => !n.is_read && !n.read).length;
       return {
         ...state,
         notifications: state.notifications.map(n =>
           n.id === action.payload ? { ...n, read: true } : n
         ),
-        unreadCount: Math.max(0, (state.unreadCount ?? state.notifications.filter(n => !n.is_read && !n.read).length) - 1),
+        unreadCount: Math.max(0, currentUnread - 1),
       };
+    }
 
     case 'MARK_ALL_READ':
       return {

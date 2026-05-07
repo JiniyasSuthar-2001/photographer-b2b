@@ -10,6 +10,9 @@ const ROLE_OPTIONS = [
   { id: 'photographer', label: 'Photographer' },
   { id: 'freelancer', label: 'Freelancer' },
 ];
+const REVENUE_ELIGIBLE_STATUSES = ['assigned', 'completed', 'in_progress'];
+// Current business assumption: each accepted collaborator on owned jobs contributes a fixed ₹5,000 revenue unit.
+const PHOTOGRAPHER_RATE_PER_ACCEPTANCE = 5000;
 
 export default function Dashboard() {
   const { state, dispatch, addToast } = useApp();
@@ -34,16 +37,17 @@ export default function Dashboard() {
         // freelancer = accepted payouts, photographer = owned job revenue.
         const freelancerEarnings = acceptedRequests.reduce((sum, item) => sum + (Number(item.budget) || 0), 0);
         const photographerRevenue = myJobs
-          .filter(job => ['assigned', 'completed', 'in_progress'].includes(job.status))
-          .reduce((sum, item) => sum + ((Number(item.accepted_count) || 0) * 5000), 0);
+          .filter(job => REVENUE_ELIGIBLE_STATUSES.includes(job.status))
+          .reduce((sum, item) => sum + ((Number(item.accepted_count) || 0) * PHOTOGRAPHER_RATE_PER_ACCEPTANCE), 0);
 
         // Connected schedule: always combines owned jobs + accepted assignments irrespective of active role.
         const now = new Date();
         const weekAhead = new Date();
         weekAhead.setDate(now.getDate() + 7);
         const nextWeekJobs = [...myJobs, ...acceptedJobs]
-          .filter(item => item.date && new Date(item.date) >= now && new Date(item.date) <= weekAhead)
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+          .map(item => ({ ...item, parsedDate: item.date ? new Date(item.date) : null }))
+          .filter(item => item.parsedDate && item.parsedDate >= now && item.parsedDate <= weekAhead)
+          .sort((a, b) => a.parsedDate - b.parsedDate);
 
         dispatch({ type: 'SET_LATEST_REQUESTS', payload: latestRequests });
         dispatch({ type: 'SET_LATEST_JOBS', payload: latestJobs });
