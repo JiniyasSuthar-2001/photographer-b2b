@@ -18,6 +18,7 @@ class UserSignUp(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user: UserProfile
 
 class UserProfile(BaseModel):
     id: int
@@ -77,7 +78,10 @@ class UserSearchResponse(BaseModel):
 class NotificationResponse(BaseModel):
     id: int
     user_id: int
+    title: Optional[str] = None
     message: str
+    type: Optional[str] = None
+    reference_id: Optional[int] = None
     redirect_to: str
     is_read: bool
     created_at: datetime

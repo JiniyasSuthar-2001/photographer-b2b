@@ -1,34 +1,27 @@
-import { useState, useRef, useEffect } from 'react';
-import { Bell, Clock, Check, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Bell, Check, ExternalLink, Inbox } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { notificationService } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import './NotificationBell.css';
 
+/**
+ * COMPONENT: NotificationBell
+ * Purpose: Centralized alert system replacing the legacy notifications page.
+ * Logic:
+ * 1. Fetches notifications on mount.
+ * 2. Displays unread count from global state.
+ * 3. On click: marks as read and redirects based on 'redirect_to' field.
+ */
 export default function NotificationBell() {
-  const { state, dispatch } = useApp();
-  const { notifications = [] } = state;
+  const { state, dispatch, addToast } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const { notifications, unreadCount } = state;
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const data = await notificationService.getNotifications();
-        dispatch({ type: 'SET_NOTIFICATIONS', payload: data });
-      } catch (err) {
-        console.error('Failed to fetch notifications:', err);
-      }
-    };
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, [dispatch]);
-
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -39,42 +32,46 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleToggle = () => setIsOpen(!isOpen);
+
   const handleNotificationClick = async (notif) => {
     try {
       if (!notif.is_read) {
         await notificationService.markAsRead(notif.id);
         dispatch({ type: 'MARK_NOTIFICATION_READ', payload: notif.id });
       }
-      
       setIsOpen(false);
+      
+      // Redirect logic: Connected Platform Behavior
       if (notif.redirect_to) {
         navigate(notif.redirect_to);
       }
     } catch (err) {
-      console.error('Error handling notification click:', err);
+      console.error('Failed to process notification click:', err);
     }
   };
 
-  const formatTime = (dateStr) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = Math.floor((now - date) / 1000); // seconds
-
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return date.toLocaleDateString();
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllRead();
+      dispatch({ type: 'MARK_ALL_READ' });
+      addToast('All notifications marked as read');
+    } catch (err) {
+      addToast('Failed to mark all as read', 'error');
+    }
   };
 
   return (
     <div className="notif-bell-container" ref={dropdownRef}>
       <button 
-        className="notif-bell-btn" 
-        onClick={() => setIsOpen(!isOpen)}
+        className={`notif-bell-trigger ${isOpen ? 'active' : ''}`}
+        onClick={handleToggle}
         aria-label="Notifications"
       >
         <Bell size={20} />
-        {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+        {unreadCount > 0 && (
+          <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+        )}
       </button>
 
       {isOpen && (
@@ -82,39 +79,43 @@ export default function NotificationBell() {
           <div className="notif-header">
             <h3>Notifications</h3>
             {unreadCount > 0 && (
-              <button 
-                className="mark-all-btn"
-                onClick={async () => {
-                  await notificationService.markAllRead();
-                  dispatch({ type: 'MARK_ALL_READ' });
-                }}
-              >
-                Mark all read
+              <button onClick={handleMarkAllRead} className="notif-mark-all">
+                Mark all as read
               </button>
             )}
           </div>
+
           <div className="notif-list">
             {notifications.length === 0 ? (
-              <div className="notif-empty">No notifications yet</div>
+              <div className="notif-empty">
+                <Inbox size={32} />
+                <p>No notifications yet</p>
+              </div>
             ) : (
-              notifications.map(notif => (
+              notifications.map((notif) => (
                 <div 
                   key={notif.id} 
                   className={`notif-item ${!notif.is_read ? 'unread' : ''}`}
                   onClick={() => handleNotificationClick(notif)}
                 >
-                  <div className="notif-content">
-                    <p className="notif-message">{notif.message}</p>
-                    <div className="notif-meta">
-                      <Clock size={12} />
-                      <span>{formatTime(notif.created_at)}</span>
+                  <div className="notif-item-icon">
+                    {notif.type === 'job_invite' ? <ExternalLink size={16} /> : <Check size={16} />}
+                  </div>
+                  <div className="notif-item-content">
+                    <div className="notif-item-title">{notif.title}</div>
+                    <div className="notif-item-message">{notif.message}</div>
+                    <div className="notif-item-time">
+                      {new Date(notif.created_at).toLocaleDateString()}
                     </div>
                   </div>
-                  {!notif.is_read && <div className="unread-dot" />}
-                  <ChevronRight size={14} className="notif-arrow" />
+                  {!notif.is_read && <div className="notif-unread-dot" />}
                 </div>
               ))
             )}
+          </div>
+
+          <div className="notif-footer">
+            <span>Powered by Lumière Real-time</span>
           </div>
         </div>
       )}

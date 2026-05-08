@@ -1,19 +1,21 @@
 /* ── TopBar ───────────────────────────────────────────────────────────────────── */
 .topbar {
   position: fixed;
-  top: 0;
-  left: var(--sidebar-width);
-  right: 0;
+  top: 16px;
+  left: calc(var(--sidebar-width) + 32px);
+  right: 16px;
   height: var(--topbar-height);
-  background: rgba(249,250,251,0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-8);
   z-index: 90;
+  box-shadow: var(--shadow-md);
 }
 
 .topbar-title { display: flex; flex-direction: column; gap: 1px; }
@@ -34,14 +36,14 @@
 .topbar-mode-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: 8px;
+  padding: 6px 14px;
   background: var(--gradient-soft);
-  border: 1px solid rgba(59,130,246,0.15);
+  border: 1px solid rgba(124, 58, 237, 0.2);
   border-radius: var(--radius-pill);
   font-size: 12px;
-  font-weight: 600;
-  color: var(--accent-blue);
+  font-weight: 700;
+  color: var(--primary-start);
 }
 
 .topbar-mode-dot {

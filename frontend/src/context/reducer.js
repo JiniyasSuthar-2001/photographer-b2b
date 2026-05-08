@@ -1,7 +1,15 @@
-import { initialState } from '../data/mockData';
+// ==================================================================================
+// REDUCER: STATE TRANSITIONS
+// Purpose: Pure function that handles all state changes for the AppContext.
+// Impact: Any action dispatched via useApp() flows through here.
+// Connected Pages: All frontend pages (Dashboard, JobHub, Team, etc.)
+// ==================================================================================
+
+import { emptyInitialState } from '../data/mockData';
 
 export function reducer(state, action) {
   switch (action.type) {
+
 
     // ── User ──────────────────────────────────────────────────────────────────
     case 'SET_USER_NAME':
@@ -22,8 +30,11 @@ export function reducer(state, action) {
     case 'UPDATE_USER':
       return { ...state, user: { ...state.user, ...action.payload } };
 
-    case 'DISMISS_TRIAL_MODAL':
-      return { ...state, user: { ...state.user, trialModalDismissed: true } };
+    case 'DISMISS_TRIAL_MODAL': {
+      const updatedUser = { ...state.user, trialModalDismissed: true };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return { ...state, user: updatedUser };
+    }
 
     // ── Jobs ──────────────────────────────────────────────────────────────────
     case 'ADD_JOB':
@@ -134,20 +145,20 @@ export function reducer(state, action) {
         },
       };
 
-    // ── Freelancer Profile ────────────────────────────────────────────────────
-    case 'UPDATE_FREELANCER_PROFILE':
+    // ── Photographer Profile ────────────────────────────────────────────────────
+    case 'UPDATE_PHOTOGRAPHER_PROFILE':
       return {
         ...state,
-        freelancerProfile: { ...state.freelancerProfile, ...action.payload },
+        photographerProfile: { ...state.photographerProfile, ...action.payload },
       };
 
     case 'ADD_EQUIPMENT': {
       const newItem = { id: Date.now(), ...action.payload };
       return {
         ...state,
-        freelancerProfile: {
-          ...state.freelancerProfile,
-          equipment: [...state.freelancerProfile.equipment, newItem],
+        photographerProfile: {
+          ...state.photographerProfile,
+          equipment: [...state.photographerProfile.equipment, newItem],
         },
       };
     }
@@ -155,38 +166,40 @@ export function reducer(state, action) {
     case 'REMOVE_EQUIPMENT':
       return {
         ...state,
-        freelancerProfile: {
-          ...state.freelancerProfile,
-          equipment: state.freelancerProfile.equipment.filter(e => e.id !== action.payload),
+        photographerProfile: {
+          ...state.photographerProfile,
+          equipment: state.photographerProfile.equipment.filter(e => e.id !== action.payload),
         },
       };
 
-    // ── Notifications ─────────────────────────────────────────────────────────
-    case 'MARK_NOTIFICATION_READ':
-      return {
-        ...state,
-        notifications: state.notifications.map(n =>
-          n.id === action.payload ? { ...n, read: true } : n
-        ),
-      };
+    // ── ECOSYSTEM & ROLES ────────────────────────────────────────────────────
+    case 'SET_DASHBOARD_ROLE':
+      return { ...state, activeDashboardRole: action.payload };
 
-    case 'MARK_ALL_READ':
-      return {
-        ...state,
-        notifications: state.notifications.map(n => ({ ...n, read: true })),
-      };
+    case 'SET_MAIN_TAB':
+      return { ...state, activeMainTab: action.payload };
 
-    case 'ADD_NOTIFICATION':
-      return {
-        ...state,
-        notifications: [action.payload, ...state.notifications],
-      };
+    case 'SET_SUB_TAB':
+      return { ...state, activeSubTab: action.payload };
 
-    case 'SET_NOTIFICATIONS':
-      return {
-        ...state,
-        notifications: action.payload,
-      };
+
+    case 'SET_ANALYTICS_ROLE':
+      return { ...state, analyticsRole: action.payload };
+
+    case 'SET_ANALYTICS_TIMEFRAME':
+      return { ...state, analyticsTimeframe: action.payload };
+
+    case 'SET_JOBS':
+      return { ...state, jobs: action.payload };
+
+    case 'SET_JOB_REQUESTS':
+      return { ...state, jobRequests: action.payload };
+
+    case 'SET_TEAM':
+      return { ...state, team: action.payload };
+
+    case 'SET_TASKS':
+      return { ...state, jobTasks: action.payload };
 
     // ── Toasts ────────────────────────────────────────────────────────────────
     case 'ADD_TOAST':
@@ -201,9 +214,40 @@ export function reducer(state, action) {
         toasts: state.toasts.filter(t => t.id !== action.payload),
       };
 
+    // --- REFINED NOTIFICATIONS ---
+    case 'SET_NOTIFICATIONS':
+      return {
+        ...state,
+        notifications: action.payload,
+        unreadCount: action.payload.filter(n => !n.is_read).length
+      };
+
+    case 'ADD_NOTIFICATION':
+      return {
+        ...state,
+        notifications: [action.payload, ...state.notifications],
+        unreadCount: state.unreadCount + 1
+      };
+
+    case 'MARK_NOTIFICATION_READ':
+      return {
+        ...state,
+        notifications: state.notifications.map(n =>
+          n.id === action.payload ? { ...n, is_read: true } : n
+        ),
+        unreadCount: Math.max(0, state.unreadCount - 1)
+      };
+
+    case 'MARK_ALL_READ':
+      return {
+        ...state,
+        notifications: state.notifications.map(n => ({ ...n, is_read: true })),
+        unreadCount: 0
+      };
+
     // ── Reset ─────────────────────────────────────────────────────────────────
     case 'RESET_ALL':
-      return initialState;
+      return emptyInitialState;
 
     default:
       return state;

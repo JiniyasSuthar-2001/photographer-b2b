@@ -4,6 +4,7 @@ import {
   Plus, Check, X, Briefcase, Calendar as CalendarIcon,
   Search, Trash2, ClipboardList, Edit2, Save
 } from 'lucide-react';
+import { taskService } from '../services/api';
 import './Notes.css';
 
 export default function Notes() {
@@ -16,20 +17,21 @@ export default function Notes() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingText, setEditingText] = useState('');
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTaskText.trim() || !selectedJobId) return;
 
-    const newTask = {
-      id: Date.now(),
-      jobId: selectedJobId,
-      text: newTaskText.trim(),
-      completed: false
-    };
-
-    dispatch({ type: 'ADD_TASK', payload: newTask });
-    setNewTaskText('');
-    addToast('Task added successfully', 'success');
+    try {
+      const newTask = await taskService.createTask({
+        jobId: selectedJobId,
+        text: newTaskText.trim()
+      });
+      dispatch({ type: 'ADD_TASK', payload: newTask });
+      setNewTaskText('');
+      addToast('Task added successfully', 'success');
+    } catch (err) {
+      addToast('Failed to add task', 'error');
+    }
   };
 
   const startEditing = (task) => {
@@ -37,12 +39,17 @@ export default function Notes() {
     setEditingText(task.text);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingText.trim()) return;
-    dispatch({ type: 'UPDATE_TASK', payload: { id: editingTaskId, text: editingText.trim() } });
-    setEditingTaskId(null);
-    setEditingText('');
-    addToast('Task updated', 'success');
+    try {
+      const updated = await taskService.updateTask(editingTaskId, { text: editingText.trim() });
+      dispatch({ type: 'UPDATE_TASK', payload: updated });
+      setEditingTaskId(null);
+      setEditingText('');
+      addToast('Task updated', 'success');
+    } catch (err) {
+      addToast('Failed to update task', 'error');
+    }
   };
 
   const cancelEdit = () => {
@@ -50,14 +57,24 @@ export default function Notes() {
     setEditingText('');
   };
 
-  const toggleTask = (taskId) => {
-    dispatch({ type: 'TOGGLE_TASK', payload: taskId });
+  const toggleTask = async (task) => {
+    try {
+      const updated = await taskService.updateTask(task.id, { completed: !task.completed });
+      dispatch({ type: 'SET_TASKS', payload: state.jobTasks.map(t => t.id === task.id ? updated : t) });
+    } catch (err) {
+      addToast('Failed to update task', 'error');
+    }
   };
 
-  const deleteTask = (taskId) => {
+  const deleteTask = async (taskId) => {
     if (confirm('Delete this task?')) {
-      dispatch({ type: 'DELETE_TASK', payload: taskId });
-      addToast('Task removed', 'info');
+      try {
+        await taskService.deleteTask(taskId);
+        dispatch({ type: 'DELETE_TASK', payload: taskId });
+        addToast('Task removed', 'info');
+      } catch (err) {
+        addToast('Failed to delete task', 'error');
+      }
     }
   };
 
@@ -185,7 +202,7 @@ export default function Notes() {
                           <>
                             <button
                               className="task-checkbox"
-                              onClick={() => toggleTask(task.id)}
+                              onClick={() => toggleTask(task)}
                             >
                               {task.completed && <Check size={14} />}
                             </button>

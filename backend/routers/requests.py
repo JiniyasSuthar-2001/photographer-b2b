@@ -1,3 +1,9 @@
+# ==================================================================================
+# REQUESTS ROUTER
+# Purpose: Handles invitations and responses for jobs.
+# Affected Pages: Frontend -> JobHub.jsx (Accepted Jobs Tab), Team.jsx (Send Request Modal)
+# ==================================================================================
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -7,14 +13,21 @@ from models.schemas import NotificationResponse
 from routers.auth import get_current_user
 from pydantic import BaseModel
 from typing import Optional
+from core.websocket import manager
+from services.notification_service import NotificationService
+from services.job_service import job_service
+
 
 router = APIRouter(prefix="/requests", tags=["Job Requests"])
 
+# --- SCHEMAS ---
 class JobRequestCreate(BaseModel):
     job_id: int
     receiver_id: int
     role: str
     budget: int
+
+# --- ENDPOINTS ---
 
 @router.post("/")
 async def send_job_request(
@@ -22,6 +35,12 @@ async def send_job_request(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Studio Owner sends an invite to a Photographer.
+    Frontend Impact: Triggered from Team.jsx when clicking 'Send Request' on a member.
+    Notification Impact: Creates a bell notification for the Photographer.
+    Modification Risk: Changing 'redirect_to' will break where the bell takes the user.
+    """
     # Create Job Request
     new_request = models.JobRequest(
         job_id=request.job_id,
@@ -39,17 +58,22 @@ async def send_job_request(
     job = db.query(models.Job).filter(models.Job.id == request.job_id).first()
     job_title = job.title if job else "a job"
 
-    # Create notification for receiver
-    notification = models.Notification(
+    # Create notification for receiver (Photographer)
+    await NotificationService.create_notification(
+        db=db,
         user_id=request.receiver_id,
         title="New Job Invite",
         message=f"{current_user.full_name} has invited you to work on '{job_title}' as {request.role}.",
-        type="job_invite",
+        notif_type="job_invite",
         reference_id=new_request.id,
-        redirect_to="/job-hub"
+        redirect_to="/job-hub" # Leads to Invites tab
     )
-    db.add(notification)
-    db.commit()
+
+    # Notify receiver to refresh their invites/requests page
+    await manager.send_personal_message({
+        "type": "REFRESH_PAGE",
+        "page": "invites"
+    }, request.receiver_id)
 
     return new_request
 
@@ -60,6 +84,13 @@ async def respond_to_job_request(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Photographer accepts or declines an invite.
+    Frontend Impact: Triggered by Accept/Decline buttons in JobHub.jsx (Invites tab).
+    Logic Impact: 
+    - If 'accepted': Adds entry to 'assignments' table and moves job out of 'Yet to Assign'.
+    - Notifications: Notifies Studio Owner of the response.
+    """
     job_request = db.query(models.JobRequest).filter(
         and_(
             models.JobRequest.id == id,
@@ -81,7 +112,7 @@ async def respond_to_job_request(
         )
         db.add(assignment)
         
-        # Also update job status if needed (minimal change)
+        # Update job status - critical for Studio Owner's 'Current' filter
         job = db.query(models.Job).filter(models.Job.id == job_request.job_id).first()
         if job:
             job.status = "assigned"
@@ -89,32 +120,45 @@ async def respond_to_job_request(
     db.commit()
     db.refresh(job_request)
 
-    # Create notification for sender (Studio Owner)
+    # Notification for Studio Owner
     job_title = job_request.job.title if job_request.job else "job"
-    notification_sender = models.Notification(
+    await NotificationService.create_notification(
+        db=db,
         user_id=job_request.sender_id,
         title=f"Job Invite {status.capitalize()}",
         message=f"{current_user.full_name} has {status} your invite for '{job_title}'.",
-        type="job_invite_response",
+        notif_type="job_invite_response",
         reference_id=job_request.id,
         redirect_to="/job-hub"
     )
-    db.add(notification_sender)
 
-    # Create notification for receiver (Photographer) - Confirmation
+    # Confirmation for Photographer
     sender_name = db.query(models.User).filter(models.User.id == job_request.sender_id).first().full_name
-    notification_receiver = models.Notification(
+    await NotificationService.create_notification(
+        db=db,
         user_id=current_user.id,
         title=f"Job Invite {status.capitalize()}",
         message=f"You have {status} {sender_name}'s invite for '{job_title}'.",
-        type="job_invite_response",
+        notif_type="job_invite_response",
         reference_id=job_request.id,
         redirect_to="/job-hub"
     )
-    db.add(notification_receiver)
-    db.commit()
+
+    # Notify Studio Owner to refresh their Job Hub (My Jobs tab)
+    await manager.send_personal_message({
+        "type": "REFRESH_PAGE",
+        "page": "jobs"
+    }, job_request.sender_id)
+
+    # Real-time WebSocket refresh for the Studio Owner
+    await manager.send_personal_message({
+        "type": "REFRESH_PAGE",
+        "page": "jobs",
+        "message": f"New update on '{job_title}'"
+    }, job_request.sender_id)
 
     return job_request
+
 
 @router.get("/eligible-jobs/{photographer_id}")
 async def get_eligible_jobs(
@@ -122,13 +166,14 @@ async def get_eligible_jobs(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Get photographer category
+    """
+    Lists jobs matching photographer's category that aren't already requested.
+    Frontend Impact: Populates the dropdown in the 'Send Request' modal.
+    """
     photographer = db.query(models.User).filter(models.User.id == photographer_id).first()
     if not photographer:
         raise HTTPException(status_code=404, detail="Photographer not found")
     
-    # Get jobs owned by current user, matching category, and not completed
-    # Also exclude jobs where this photographer is already assigned or has a pending request
     assigned_job_ids = [a.job_id for a in photographer.assignments]
     requested_job_ids = [r.job_id for r in db.query(models.JobRequest).filter(
         and_(
@@ -143,7 +188,7 @@ async def get_eligible_jobs(
         and_(
             models.Job.studio_owner_id == current_user.id,
             models.Job.status == "open",
-            models.Job.category == photographer.category,
+            # Removed role filter to show all available jobs
             ~models.Job.id.in_(excluded_ids) if excluded_ids else True
         )
     ).all()
@@ -157,6 +202,12 @@ async def get_my_requests(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Main feed for requests/invites.
+    Frontend Impact: 
+    - role=receiver & status=pending -> 'Invites' tab.
+    - role=receiver & status=declined -> 'Declined Jobs' tab.
+    """
     query = db.query(models.JobRequest)
     if role == "sender":
         query = query.filter(models.JobRequest.sender_id == current_user.id)
@@ -168,7 +219,6 @@ async def get_my_requests(
     
     requests = query.order_by(models.JobRequest.created_at.desc()).all()
     
-    # Enrich with job and sender/receiver details
     result = []
     for req in requests:
         job = db.query(models.Job).filter(models.Job.id == req.job_id).first()
@@ -189,6 +239,61 @@ async def get_my_requests(
             "status": req.status,
             "created_at": req.created_at
         })
+    # Sort chronologically by the job's date (if available)
+    return job_service.sort_chronologically(result, date_key='job_date')
+
+
+@router.delete("/{id}")
+async def cancel_job_request(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Studio Owner cancels a pending job request.
+    """
+    request = db.query(models.JobRequest).filter(
+        and_(models.JobRequest.id == id, models.JobRequest.sender_id == current_user.id)
+    ).first()
+    
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    if request.status != "pending":
+        raise HTTPException(status_code=400, detail="Only pending requests can be cancelled")
+    
+    db.delete(request)
+    db.commit()
+    return {"message": "Request cancelled successfully"}
+
+@router.get("/job/{job_id}")
+async def get_requests_for_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Fetches all invitations/requests for a specific job.
+    Frontend Impact: Populates the 'Request Status' popup in JobHub.jsx.
+    """
+    # Verify ownership
+    job = db.query(models.Job).filter(and_(models.Job.id == job_id, models.Job.studio_owner_id == current_user.id)).first()
+    if not job:
+        raise HTTPException(status_code=403, detail="Not authorized to view this job's requests")
+
+    requests = db.query(models.JobRequest).filter(models.JobRequest.job_id == job_id).all()
+    
+    result = []
+    for req in requests:
+        receiver = db.query(models.User).filter(models.User.id == req.receiver_id).first()
+        result.append({
+            "id": req.id,
+            "receiver_name": receiver.full_name if receiver else "Unknown",
+            "receiver_id": req.receiver_id,
+            "role": req.role,
+            "status": req.status,
+            "created_at": req.created_at
+        })
     return result
 
 @router.get("/accepted-jobs")
@@ -196,7 +301,10 @@ async def get_accepted_jobs(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # This specifically returns jobs where the user is an ASSIGNEE
+    """
+    Returns jobs assigned to the current Photographer.
+    Frontend Impact: Populates the 'Accepted Jobs' sub-tab in JobHub.jsx.
+    """
     assignments = db.query(models.Assignment).filter(models.Assignment.member_id == current_user.id).all()
     
     result = []
@@ -208,9 +316,12 @@ async def get_accepted_jobs(
             "id": assign.id,
             "job_id": assign.job_id,
             "title": job.title if job else "Unknown Job",
+            "owner_id": owner.id if owner else None,
             "owner_name": owner.full_name if owner else "Unknown",
             "date": job.date if job else None,
             "role": assign.role,
             "status": job.status if job else "unknown"
         })
-    return result
+    # Sort chronologically by job date (Upcoming first)
+    return job_service.sort_chronologically(result, date_key='date')
+

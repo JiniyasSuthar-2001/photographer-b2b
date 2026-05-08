@@ -8,7 +8,7 @@ const JobSelectionModal = ({ isOpen, onClose, photographer, onSelect }) => {
     const [loading, setLoading] = useState(false);
     const [selectedJobId, setSelectedJobId] = useState(null);
     const [sending, setSending] = useState(false);
-    const [role, setRole] = useState('Lead');
+    const [role, setRole] = useState(photographer?.category || 'Lead');
     const [budget, setBudget] = useState(5000);
 
     useEffect(() => {
@@ -70,8 +70,8 @@ const JobSelectionModal = ({ isOpen, onClose, photographer, onSelect }) => {
                     ) : jobs.length === 0 ? (
                         <div className="empty-state">
                             <Briefcase size={40} />
-                            <p>No open jobs found for <strong>{photographer.category}</strong> category.</p>
-                            <small>Try adding a new job with this category in Job Hub.</small>
+                            <p>No open jobs found requiring <strong>{photographer.category}</strong> role.</p>
+                            <small>Try adding a new job with this role in Job Hub.</small>
                         </div>
                     ) : (
                         <div className="jobs-list-container">

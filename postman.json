@@ -1,0 +1,872 @@
+{
+    "info": {
+        "name": "Lumi\u00e8re API",
+        "description": "",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Signup",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/signup",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "signup"
+                            ]
+                        },
+                        "description": "Creates a new user record.\nFrontend Impact: Triggered by the form in Signup.jsx."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticates user and returns a JWT token.\nFrontend Impact: Populates 'token' and 'user' in localStorage.\nModification Risk: If the response structure changes, authService.login in api.js \nwill fail to save the token correctly."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/logout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Logs out user."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/forgot-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "description": "Simulates a password reset request.\nFrontend Impact: Connected to the 'Forgot Password' link in Login.jsx."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Team",
+            "item": [
+                {
+                    "name": "Get Collaborations",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/collaborations/{member_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "collaborations",
+                                "{member_id}"
+                            ]
+                        },
+                        "description": "Fetches past jobs shared between the Studio Owner and a specific Photographer.\nFrontend Impact: Populates the list inside CollaborationModal in JobHub.jsx.\nModification Risk: If pagination logic changes, the modal's 'Next/Prev' buttons \nmay stop functioning."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Search User",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/users/search",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "users",
+                                "search"
+                            ]
+                        },
+                        "description": "Search for a registered photographer by phone number.\nFrontend Impact: Triggered in Team.jsx when adding a 'Connected' member."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Send Team Request",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/request",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "request"
+                            ]
+                        },
+                        "description": "Sends a request for a photographer to join the Studio Owner's directory.\nFrontend Impact: Updates the UI state in Team.jsx after successfully adding a member.\nNotification Impact: Alerts the Photographer via the NotificationBell."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Respond To Request",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/request/{id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "request",
+                                "{id}"
+                            ]
+                        },
+                        "description": "Handles photographer's response to a team invite.\nImpact: If 'accepted', the photographer is added to the 'team' table \nand becomes visible in the Studio Owner's Team.jsx list."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Pending Team Requests",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/requests/pending",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "requests",
+                                "pending"
+                            ]
+                        },
+                        "description": "Fetches team invitations sent TO the current user."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Joined Teams",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/joined",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "joined"
+                            ]
+                        },
+                        "description": "Fetches teams that the current user is a member of."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Team",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team"
+                            ]
+                        },
+                        "description": "Fetches the full team directory for a Studio Owner.\nFrontend Impact: Populates the table in Team.jsx."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Team Member",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/{member_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "{member_id}"
+                            ]
+                        },
+                        "description": "Allows Studio Owners to edit the 'Alias' information for a team member.\nFrontend Impact: Triggered by 'Edit' action in Team.jsx.\nNote: This does NOT change the Photographer's actual profile, only their \nentry in the owner's directory."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Remove Team Member",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/{member_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "{member_id}"
+                            ]
+                        },
+                        "description": "Removes a photographer from the Studio Owner's local directory.\nFrontend Impact: Triggered by 'Delete' action in Team.jsx."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Discover Photographers",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/team/discover",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "team",
+                                "discover"
+                            ]
+                        },
+                        "description": "Public directory of registered freelancers.\nFrontend Impact: Populates the 'Discover' tab in Team.jsx."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Notifications",
+            "item": [
+                {
+                    "name": "Get Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications"
+                            ]
+                        },
+                        "description": "Fetches the user's notification history.\nFrontend Impact: Populates the dropdown list in the NotificationBell.\nPolling: NotificationBell.jsx calls this every 30 seconds to refresh the list."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Mark As Read",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications/{id}/read",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "{id}",
+                                "read"
+                            ]
+                        },
+                        "description": "Marks a single notification as read.\nFrontend Impact: Triggered when a user clicks a notification item in the bell dropdown.\nVisual Impact: Removes the 'unread' highlight and reduces the badge count in the navbar."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Mark All As Read",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/notifications/read-all",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "read-all"
+                            ]
+                        },
+                        "description": "Marks all notifications for the user as read.\nFrontend Impact: Triggered by the 'Mark all as read' link in the bell dropdown."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Job Requests",
+            "item": [
+                {
+                    "name": "Send Job Request",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests"
+                            ]
+                        },
+                        "description": "Studio Owner sends an invite to a Photographer.\nFrontend Impact: Triggered from Team.jsx when clicking 'Send Request' on a member.\nNotification Impact: Creates a bell notification for the Photographer.\nModification Risk: Changing 'redirect_to' will break where the bell takes the user."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get My Requests",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests"
+                            ]
+                        },
+                        "description": "Main feed for requests/invites.\nFrontend Impact: \n- role=receiver & status=pending -> 'Invites' tab.\n- role=receiver & status=declined -> 'Declined Jobs' tab."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Respond To Job Request",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/{id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests",
+                                "{id}"
+                            ]
+                        },
+                        "description": "Photographer accepts or declines an invite.\nFrontend Impact: Triggered by Accept/Decline buttons in JobHub.jsx (Invites tab).\nLogic Impact: \n- If 'accepted': Adds entry to 'assignments' table and moves job out of 'Yet to Assign'.\n- Notifications: Notifies Studio Owner of the response."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Cancel Job Request",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/{id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests",
+                                "{id}"
+                            ]
+                        },
+                        "description": "Studio Owner cancels a pending job request."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Eligible Jobs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/eligible-jobs/{photographer_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests",
+                                "eligible-jobs",
+                                "{photographer_id}"
+                            ]
+                        },
+                        "description": "Lists jobs matching photographer's category that aren't already requested.\nFrontend Impact: Populates the dropdown in the 'Send Request' modal."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Requests For Job",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/job/{job_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests",
+                                "job",
+                                "{job_id}"
+                            ]
+                        },
+                        "description": "Fetches all invitations/requests for a specific job.\nFrontend Impact: Populates the 'Request Status' popup in JobHub.jsx."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Accepted Jobs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/requests/accepted-jobs",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "requests",
+                                "accepted-jobs"
+                            ]
+                        },
+                        "description": "Returns jobs assigned to the current Photographer.\nFrontend Impact: Populates the 'Accepted Jobs' sub-tab in JobHub.jsx."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Jobs",
+            "item": [
+                {
+                    "name": "Get Jobs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/jobs/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "jobs"
+                            ]
+                        },
+                        "description": "Fetches all jobs created by the logged-in Studio Owner.\nFrontend Impact: Populates the 'My Jobs' grid in JobHub.jsx.\nSORTING: Returns jobs in chronological order (Current/Future first, Past last)."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Job",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/jobs/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "jobs"
+                            ]
+                        },
+                        "description": "Creates a new job. \nFrontend Impact: Triggered by 'Post New Job' button in JobHub.jsx.\nModification Risk: If 'status' default is changed from 'open', frontend filters \nin 'Yet to Assign' might stop working."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Job By Id",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/jobs/{job_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "jobs",
+                                "{job_id}"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Job",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/jobs/{job_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "jobs",
+                                "{job_id}"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Job",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/jobs/{job_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "jobs",
+                                "{job_id}"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Webhooks",
+            "item": [
+                {
+                    "name": "Handle External Webhook",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/webhooks/external-event",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "webhooks",
+                                "external-event"
+                            ]
+                        },
+                        "description": "Standard webhook receiver for external integrations (Meta, Stripe, etc.).\nConnection: Receives a POST, processes logic, and notifies the connected 'Pages' in real-time."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Trigger Page Refresh",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/webhooks/trigger-refresh",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "webhooks",
+                                "trigger-refresh"
+                            ]
+                        },
+                        "description": "Internal 'webhook' to force a frontend page to refresh its data.\nConnection: Allows the backend to 'command' a page to update without a browser refresh."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Analytics",
+            "item": [
+                {
+                    "name": "Get Analytics",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/analytics/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "analytics"
+                            ]
+                        },
+                        "description": "Returns aggregated data based on the selected role (photographer/studio_owner) \nand timeframe (1W, 1M, etc.)."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Photographer Rankings",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/analytics/rankings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "analytics",
+                                "rankings"
+                            ]
+                        },
+                        "description": "Returns the top collaborators (photographers) for the current user."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "item": [
+                {
+                    "name": "Get Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/dashboard/summary",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "dashboard",
+                                "summary"
+                            ]
+                        },
+                        "description": "Returns data for the dashboard based on active role."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "tasks",
+            "item": [
+                {
+                    "name": "Get Tasks",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tasks/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tasks"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Task",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tasks/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tasks"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Task",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tasks/{task_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tasks",
+                                "{task_id}"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Task",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tasks/{task_id}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tasks",
+                                "{task_id}"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Subscription",
+            "item": [
+                {
+                    "name": "Upgrade Plan",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/subscription/upgrade",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "subscription",
+                                "upgrade"
+                            ]
+                        },
+                        "description": "Upgrades the user to a premium plan.\nFrontend Impact: Triggered from Pricing.jsx.\nWebSocket Impact: Sends a 'SUBSCRIPTION_UPDATED' message to refresh the UI."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Subscription Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/subscription/status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "subscription",
+                                "status"
+                            ]
+                        },
+                        "description": "Returns the current user's subscription details."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Root",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": []
+                }
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8000",
+            "type": "string"
+        }
+    ]
+}

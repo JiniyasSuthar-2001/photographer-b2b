@@ -1,9 +1,24 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+# ==================================================================================
+# DATABASE MODELS
+# Purpose: Defines the schema for the Lumière platform.
+# Impact: Every field here maps to a data point in the Frontend.
+# ==================================================================================
+
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from db.database import Base
 from datetime import datetime
 
 class User(Base):
+    """
+    Stores core user profile data.
+    Frontend Impact: 'user_type' determines if the user sees the Photographer dashboard (Studio Owner) or Freelancer dashboard.
+    
+    ROLE SYSTEM UPGRADE:
+    - photographer: (Old Studio Owner) Can post jobs, manage teams.
+    - freelancer: (Old Photographer) Can accept invites, view assigned work.
+    """
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -13,8 +28,16 @@ class User(Base):
     phone = Column(String, unique=True, index=True)
     full_name = Column(String)
     city = Column(String)
-    category = Column(String) # e.g., 'Wedding', 'Portrait'
-    user_type = Column(String, default='photographer') # 'studio_owner' or 'photographer'
+    category = Column(String) # Now referred to as 'Roles' in the UI
+    user_type = Column(String, default='photographer') # photographer, freelancer
+
+    active_devices = Column(Integer, default=0, nullable=False)
+    
+    # Subscription Fields
+    is_pro = Column(Boolean, default=False)
+    plan = Column(String, default='Starter')
+    is_on_trial = Column(Boolean, default=True)
+    trial_days_left = Column(Integer, default=14)
 
     # Relationships
     jobs_owned = relationship("Job", back_populates="owner")
@@ -25,20 +48,49 @@ class User(Base):
 
 
 class Job(Base):
+    """
+    Stores job details created by Studio Owners.
+    Frontend Impact: Populates the 'My Jobs' section in JobHub.jsx.
+    
+    LIFECYCLE FLOW:
+    - Status can be 'open', 'completed', 'assigned', 'cancelled'.
+    - If Job Date < Today, the system automatically treats it as 'completed' in the UI.
+    - Status 'completed' locks all editing and request sending (enforced in Service layer).
+    
+    ROLE ARCHITECTURE:
+    - 'roles' field stores the required workforce (e.g., '2x Drone, 1x Lead').
+    - Multi-role support allows requesting multiple quantities of the same role.
+    """
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)
+    client = Column(String)
     date = Column(DateTime, default=datetime.utcnow)
     studio_owner_id = Column(Integer, ForeignKey("users.id"))
-    category = Column(String) # Wedding, Portrait, etc.
+    category = Column(String) # Now a free-text field, no longer affects filtering logic.
     status = Column(String, default="open") # open, completed, assigned, cancelled
+    budget = Column(Integer, default=0)
+    location = Column(String)
+    venue = Column(String)
+    roles = Column(String) # Stores role requirements (e.g., "2x Drone, 1x Lead")
 
     owner = relationship("User", back_populates="jobs_owned")
     assignments = relationship("Assignment", back_populates="job")
     requests = relationship("JobRequest", back_populates="job")
+    tasks = relationship("Task", back_populates="job")
+
+    @property
+    def is_past(self):
+        """Helper to determine if job is older than today."""
+        return self.date < datetime.utcnow()
+
 
 class Assignment(Base):
+    """
+    Intersection table linking Photographers to Jobs.
+    Frontend Impact: Determines which jobs appear in the 'Accepted Jobs' tab for Photographers.
+    """
     __tablename__ = "assignments"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -50,6 +102,10 @@ class Assignment(Base):
     member = relationship("User", back_populates="assignments")
 
 class TeamRequest(Base):
+    """
+    Handles requests for photographers to join a Studio Owner's team directory.
+    Frontend Impact: Populates notifications and the Team management page.
+    """
     __tablename__ = "team_requests"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -67,6 +123,11 @@ class TeamRequest(Base):
     receiver = relationship("User", foreign_keys=[receiver_id], back_populates="received_requests")
 
 class JobRequest(Base):
+    """
+    Handles specific job invitations.
+    Frontend Impact: Populates the 'Invites' and 'Declined Jobs' tabs in JobHub.jsx.
+    Risk: Modification of 'status' here will break the photographer's ability to accept/decline work.
+    """
     __tablename__ = "job_requests"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -83,6 +144,11 @@ class JobRequest(Base):
     receiver = relationship("User", foreign_keys=[receiver_id])
 
 class Team(Base):
+    """
+    The local 'directory' for a Studio Owner.
+    Frontend Impact: Populates the Team list in Team.jsx.
+    Note: 'phone' is used as the primary identifier for adding members.
+    """
     __tablename__ = "team"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -96,13 +162,41 @@ class Team(Base):
     phone = Column(String)
 
 class Notification(Base):
+    """
+    Global notification system.
+    Frontend Impact: Populates the NotificationBell.jsx dropdown.
+    Logic: 'redirect_to' stores the frontend URL (e.g., /job-hub) to navigate to 
+    when the user clicks the notification.
+    """
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String) # e.g., "New Job Invite"
     message = Column(String)
-    redirect_to = Column(String) # e.g., '/team'
+    type = Column(String) # e.g., "job_invite", "team_request"
+    reference_id = Column(Integer, nullable=True) # ID of the related object
+    redirect_to = Column(String) # Critical for navigation
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="notifications")
+
+class Task(Base):
+    """
+    Checklist items for a specific job.
+    Frontend Impact: Populates the Notes.jsx page.
+    """
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"))
+    text = Column(String)
+    completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("Job", back_populates="tasks")
+
+# Add relationship to Job class as well (must be done in a separate block if not using strings)
+# But Job already has relationship defined by string in many places. 
+# Let's update Job class to include task relationship.

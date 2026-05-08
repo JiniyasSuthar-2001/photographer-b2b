@@ -1,3 +1,12 @@
+// ==================================================================================
+// COMPONENT: SIDEBAR
+// Purpose: Primary navigation and role context for the application.
+// Connected Pages: ALL (Persistent across the platform)
+// Logic: 
+// - Dynamic Badge: Reflects Photographer vs Freelancer role.
+// - Notification Badge: Triggers on '/job-hub' when freelancer has pending requests.
+// ==================================================================================
+
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, BarChart2, UserCircle,
@@ -8,7 +17,8 @@ import { useApp } from '../../context/AppContext';
 import Avatar from '../ui/Avatar';
 import './Sidebar.css';
 
-const studioOwnerNav = [
+
+const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/calendar', icon: Calendar, label: 'Calendar' },
   { path: '/job-hub', icon: Briefcase, label: 'Job Hub' },
@@ -18,25 +28,17 @@ const studioOwnerNav = [
   { path: '/profile', icon: UserCircle, label: 'Profile' },
 ];
 
-const freelancerNav = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/calendar', icon: Calendar, label: 'My Calendar' },
-  { path: '/job-hub', icon: Briefcase, label: 'Job Hub' },
-  { path: '/team', icon: Users, label: 'Team' },
-  { path: '/notes', icon: ClipboardList, label: 'Notes' },
-  { path: '/profile', icon: UserCircle, label: 'Profile' },
-];
-
 export default function Sidebar() {
   const { state } = useApp();
   const { user } = state;
-  const navItems = user.mode === 'freelancer' ? freelancerNav : studioOwnerNav;
+  // Use standardized navigation for all roles
 
   const pendingRequests = state.jobRequests.filter(r =>
     user.mode === 'freelancer'
       ? r.status === 'pending'
       : false
   ).length;
+
 
   return (
     <aside className="sidebar">
@@ -48,16 +50,17 @@ export default function Sidebar() {
         <span className="sidebar-logo-text">Lumière</span>
       </div>
 
-      {/* Mode Badge */}
+      {/* Mode Badge (Renamed terminology) */}
       <div className="sidebar-mode-badge">
-        <span>{user.mode === 'freelancer' ? 'Freelancer' : 'Studio Owner'}</span>
-        {user.authority === 'manager' && user.mode === 'studio_owner' && (
+        <span>{user.mode === 'photographer' ? 'Photographer' : 'Freelancer'}</span>
+        {user.authority === 'manager' && user.mode === 'photographer' && (
           <span className="sidebar-authority">Manager</span>
         )}
-        {user.authority === 'staff' && user.mode === 'studio_owner' && (
+        {user.authority === 'staff' && user.mode === 'photographer' && (
           <span className="sidebar-authority staff">Staff</span>
         )}
       </div>
+
 
       {/* Navigation */}
       <nav className="sidebar-nav">
@@ -78,15 +81,6 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {/* Locked Analytics item for Freelancer */}
-        {user.mode === 'freelancer' && (
-          <div className="sidebar-nav-item disabled" title="Analytics is available for Studio Owners">
-            <span className="sidebar-nav-bar" />
-            <BarChart2 size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label-text">Analytics</span>
-            <Lock size={12} style={{ color: 'var(--text-muted)', marginLeft: 'auto' }} />
-          </div>
-        )}
       </nav>
 
       <div style={{ flex: 1 }} />
@@ -97,15 +91,15 @@ export default function Sidebar() {
           <div className="sidebar-trial-text">
             <strong>{user.trialDaysLeft} days</strong> left on trial
           </div>
-          <NavLink to="/profile" className="sidebar-trial-cta">Upgrade to Pro</NavLink>
+          <NavLink to="/pricing" className="sidebar-trial-cta">Upgrade to Pro</NavLink>
         </div>
       )}
 
       {/* Profile */}
       <div className="sidebar-profile">
-        <Avatar name={user.name} size="sm" />
+        <Avatar name={user.full_name || user.username} size="sm" />
         <div className="sidebar-profile-info">
-          <div className="sidebar-profile-name">{user.name}</div>
+          <div className="sidebar-profile-name">{user.full_name || user.username}</div>
           <div className="sidebar-profile-email">{user.email}</div>
         </div>
         <NavLink to="/profile" className="sidebar-profile-settings">

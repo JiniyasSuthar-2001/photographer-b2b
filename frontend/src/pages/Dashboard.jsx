@@ -1,15 +1,31 @@
+// ==================================================================================
+// PAGE: DASHBOARD
+// Purpose: High-level overview of the photography ecosystem for both roles.
+// Connected Pages: 
+// - JobHub.jsx (Linked via interactive StatCards)
+// - Analytics.jsx (Linked via the Earnings StatCard)
+// Role Architecture:
+// - Photographer Mode: Focuses on managed jobs and revenue.
+// - Freelancer Mode: Focuses on incoming requests and payouts.
+// ==================================================================================
+
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { NavLink } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import {
-  DollarSign, Briefcase, Eye, Calendar,
+  IndianRupee, Briefcase, Eye, Calendar,
   ArrowRight, MapPin, Clock, Check, X,
-  Bell, AlertCircle, Plus
+  Bell, AlertCircle, Plus, Camera, Sparkles
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StatCard from '../components/ui/StatCard';
+import EmptyState from '../components/ui/EmptyState';
+import { requestService } from '../services/api';
 import { ROLE_TYPES } from '../data/mockData';
+import { sortChronologically } from '../utils/sorting';
 import './Dashboard.css';
+
+
 
 const REQUEST_STATUS_STYLES = {
   pending:  { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  label: 'Pending'  },
@@ -19,213 +35,286 @@ const REQUEST_STATUS_STYLES = {
 
 export default function Dashboard() {
   const { state, dispatch, addToast } = useApp();
-  const { jobs, jobRequests, analytics } = state;
-  const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'jobs'
-  const [acceptingId, setAcceptingId] = useState(null);
-  const [paymentInput, setPaymentInput] = useState('');
+  const { 
+    jobs, 
+    jobRequests, 
+    analytics, 
+    activeDashboardRole,
+    user
+  } = state;
 
-  const incomingRequests = jobRequests.filter(r => r.status === 'pending');
-  // For 'My Jobs', we include accepted requests and jobs assigned directly.
-  const myAssignments = jobRequests.filter(r => r.status === 'accepted');
-  const earnings = analytics.freelancerEarnings.at(-1)?.amount || 0;
+  // --- CORE DATA PROCESSING ---
+  // Connects to: backend/routers/jobs.py & backend/routers/requests.py
+  // Logic: Filters 'jobs' and 'jobRequests' from global state based on the active role.
+  const isPhotographerMode = activeDashboardRole === 'photographer';
 
-  const today = new Date();
-  const isSunday = today.getDay() === 0;
 
-  // Next week's jobs mock logic
-  const nextWeekJobs = myAssignments.slice(0, 3); // Mocking 3 jobs for next week
 
-  const handleAccept = (req) => {
-    if (acceptingId === req.id) {
-      dispatch({ type: 'RESPOND_JOB_REQUEST', payload: { id: req.id, status: 'accepted', payment: parseFloat(paymentInput) || req.budget } });
+  // CHRONOLOGICAL SORTING: Ensuring immediate work is at the top
+  const myOwnedJobs = sortChronologically(jobs.filter(j => j.status !== 'cancelled'), 'date').slice(0, 4);
+  const myIncomingRequests = sortChronologically(jobRequests.filter(r => r.status === 'pending'), 'job_date').slice(0, 4);
+
+  
+  // Stats calculation based on active role
+  const pendingCount = jobRequests.filter(r => r.status === 'pending').length;
+  const activeAssignmentsCount = jobRequests.filter(r => r.status === 'accepted').length;
+  
+  // Earnings logic based on role requirement
+  // Photographer = Revenue from owned jobs (mocked here from analytics)
+  // Freelancer = Payouts from accepted jobs
+  const currentEarnings = isPhotographerMode 
+    ? ((analytics.photographerEarnings[analytics.photographerEarnings.length - 1]?.amount || 0) * 1.5) 
+    : (analytics.photographerEarnings[analytics.photographerEarnings.length - 1]?.amount || 0);
+
+
+  // --- NEXT WEEK WORK (COMBINED ECOSYSTEM) ---
+  // Aggregates both owned jobs and accepted freelance assignments
+  // Sorted chronologically to show the week's priority
+  const nextWeekWork = sortChronologically([
+    ...jobs.filter(j => j.status === 'assigned').map(j => ({ ...j, type: 'owned' })),
+    ...jobRequests.filter(r => r.status === 'accepted').map(r => ({ ...r, title: r.jobTitle, date: r.job_date, type: 'freelance' }))
+  ], 'date').slice(0, 4);
+
+
+  const navigate = useNavigate();
+
+  const handleRoleToggle = (role) => {
+    dispatch({ type: 'SET_DASHBOARD_ROLE', payload: role });
+    addToast(`Switched to ${role === 'photographer' ? 'Photographer' : 'Freelancer'} view`);
+  };
+
+
+  // --- NAVIGATION HELPERS ---
+  // These functions set the global tab state before navigating to ensure the user 
+  // lands on the correct sub-section of the platform.
+
+  const navigateToJobHub = (mainTab, subTab = 'accepted') => {
+    dispatch({ type: 'SET_MAIN_TAB', payload: mainTab });
+    dispatch({ type: 'SET_SUB_TAB', payload: subTab });
+    navigate('/job-hub');
+  };
+
+
+
+  const handleDismissTrial = () => {
+    dispatch({ type: 'DISMISS_TRIAL_MODAL' });
+  };
+
+  const handleAccept = async (req) => {
+    try {
+      await requestService.respondToRequest(req.id, 'accepted');
+      dispatch({ type: 'RESPOND_JOB_REQUEST', payload: { id: req.id, status: 'accepted' } });
       addToast(`✅ Accepted: ${req.jobTitle}`, 'success');
-      setAcceptingId(null); setPaymentInput('');
-    } else {
-      setAcceptingId(req.id); setPaymentInput(String(req.budget));
+    } catch (err) {
+      addToast('Failed to accept request', 'error');
     }
   };
 
-  const handleDecline = (req) => {
-    dispatch({ type: 'RESPOND_JOB_REQUEST', payload: { id: req.id, status: 'declined' } });
-    addToast(`Declined: ${req.jobTitle}`, 'info');
-    if (acceptingId === req.id) { setAcceptingId(null); setPaymentInput(''); }
-  };
-
   return (
-    <div className="dashboard">
-      {isSunday && nextWeekJobs.length > 0 && (
-        <div className="alert-banner" style={{background: 'var(--accent-blue)', color: '#fff', padding: '12px 16px', borderRadius: 8, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8}}>
-          <Bell size={18} />
-          <span><strong>Sunday Update:</strong> You have {nextWeekJobs.length} jobs scheduled for next week! Check your Next Week Work panel.</span>
+    <div className="dashboard-container">
+      {/* ─── ECOSYSTEM ROLE TOGGLE ─── */}
+      <div className="dashboard-header-actions">
+        <div className="dashboard-welcome">
+          <h1>Welcome back, {user.full_name || user.username}</h1>
+          <p>Here's what's happening with your {(user.user_type || '').replace('_', ' ')} account.</p>
         </div>
-      )}
-
-      {/* KPI Row */}
-      <div className="grid-3">
-        <StatCard label="Pending Requests"   value={incomingRequests.length} icon={<Bell size={18} style={{color:'#F43F5E'}}/>}    iconBg="rgba(244,63,94,0.1)"/>
-        <StatCard label="Active Assignments" value={myAssignments.length}    icon={<Briefcase size={18} style={{color:'#3B82F6'}}/>} iconBg="rgba(59,130,246,0.1)"/>
-        <StatCard label="Earnings This Month" value={`₹${earnings.toLocaleString()}`} change="11.5%" changeDir="up" icon={<DollarSign size={18} style={{color:'#10B981'}}/>} iconBg="rgba(16,185,129,0.1)"/>
+        <div className="role-toggle-group">
+          <button 
+            className={`role-toggle-btn ${isPhotographerMode ? 'active' : ''}`}
+            onClick={() => handleRoleToggle('photographer')}
+          >
+            <Camera size={16} />
+            Photographer
+          </button>
+          <button 
+            className={`role-toggle-btn ${!isPhotographerMode ? 'active' : ''}`}
+            onClick={() => handleRoleToggle('freelancer')}
+          >
+            <Sparkles size={16} />
+            Freelancer
+          </button>
+        </div>
       </div>
 
-      <div className="dashboard-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
-        <div className="dashboard-left">
+
+      {/* ─── DYNAMIC KPI ROW (CONNECTED NAVIGATION) ─── */}
+      <div className="grid-3 dashboard-stats-row">
+        <div 
+          onClick={() => navigateToJobHub(isPhotographerMode ? 'my-jobs' : 'accepted-jobs', isPhotographerMode ? 'assigned' : 'invites')} 
+          className="clickable-stat"
+        >
+          <StatCard 
+            label={isPhotographerMode ? "Managed Jobs" : "Pending Requests"} 
+            value={isPhotographerMode ? jobs.length : pendingCount} 
+            icon={<Bell size={18} style={{color:'#F43F5E'}}/>} 
+            iconBg="rgba(244,63,94,0.1)"
+          />
+        </div>
+        <div 
+          onClick={() => navigateToJobHub(isPhotographerMode ? 'my-jobs' : 'accepted-jobs', 'accepted')} 
+          className="clickable-stat"
+        >
+          <StatCard 
+            label="Active Assignments" 
+            value={activeAssignmentsCount} 
+            icon={<Briefcase size={18} style={{color:'#3B82F6'}}/>} 
+            iconBg="rgba(59,130,246,0.1)"
+          />
+        </div>
+        <div onClick={() => navigate('/analytics')} className="clickable-stat">
+          <StatCard 
+            label="Earnings This Month" 
+            value={`₹${Math.round(currentEarnings).toLocaleString()}`} 
+            change="12.4%" 
+            changeDir="up" 
+            icon={<IndianRupee size={18} style={{color:'#10B981'}}/>} 
+            iconBg="rgba(16,185,129,0.1)"
+          />
+        </div>
+      </div>
+
+
+
+      <div className="dashboard-main-grid">
+        <div className="dashboard-content-left">
           
-          {/* Toggles Panel */}
-          <div className="card card-padding" style={{ paddingBottom: 0 }}>
-            <div style={{display: 'flex', gap: 16, borderBottom: '1px solid var(--border)'}}>
+          {/* ─── DYNAMIC MODE SECTION ─── */}
+          <div className="card card-padding mode-section">
+            <div className="section-header">
+              <h2 className="section-title">
+                {isPhotographerMode ? 'My Jobs (Photography)' : 'My Requests (Freelance)'}
+              </h2>
               <button 
-                className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
-                onClick={() => setActiveTab('requests')}
-                style={{padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'requests' ? '2px solid var(--accent-blue)' : '2px solid transparent', color: activeTab === 'requests' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14}}
+                onClick={() => navigateToJobHub(isPhotographerMode ? 'my-jobs' : 'accepted-jobs')} 
+                className="view-all-link-btn"
               >
-                My Requests {incomingRequests.length > 0 && <span className="badge badge-rose" style={{marginLeft: 8}}>{incomingRequests.length}</span>}
+                View Hub <ArrowRight size={14} />
               </button>
-              <button 
-                className={`tab-btn ${activeTab === 'jobs' ? 'active' : ''}`}
-                onClick={() => setActiveTab('jobs')}
-                style={{padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'jobs' ? '2px solid var(--accent-blue)' : '2px solid transparent', color: activeTab === 'jobs' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14}}
-              >
-                My Jobs
-              </button>
+            </div>
+
+
+            <div className="mode-items-list">
+              {isPhotographerMode ? (
+                // PHOTOGRAPHER VIEW (Old Studio Owner)
+                myOwnedJobs.length === 0 ? (
+                  <EmptyState 
+                    title="No Photography Jobs" 
+                    message="You haven't created any jobs for your business yet."
+                    action={<NavLink to="/job-hub" className="btn btn-primary btn-sm">Post a Job</NavLink>}
+                  />
+                ) : myOwnedJobs.map(job => (
+
+                  <div key={job.id} className="ecosystem-card">
+                    <div className="eco-card-top">
+                      <div className="eco-title">{job.title}</div>
+                      <div className="eco-status-badge">{job.status}</div>
+                    </div>
+                    <div className="eco-meta">
+                      <span><MapPin size={12}/> {job.location || 'Ahmedabad, IN'}</span>
+                      <span><Calendar size={12}/> {new Date(job.date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                // FREELANCER VIEW
+                myIncomingRequests.length === 0 ? (
+                  <EmptyState 
+                    title="No Incoming Requests" 
+                    message="You don't have any freelance job requests right now."
+                  />
+                ) : myIncomingRequests.map(req => (
+                  <div key={req.id} className="ecosystem-card highlight">
+                    <div className="eco-card-top">
+                      <div>
+                        <div className="eco-title">{req.jobTitle}</div>
+                        <div className="eco-subtitle">From {req.sentBy}</div>
+                      </div>
+                      <div className="eco-price">₹{req.budget.toLocaleString()}</div>
+                    </div>
+                    <div className="eco-actions">
+                      <button className="btn-mini btn-primary" onClick={() => handleAccept(req)}>Accept</button>
+                      <button className="btn-mini btn-outline" onClick={() => navigateToJobHub('accepted-jobs', 'invites')}>View</button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          {activeTab === 'requests' ? (
-            <div className="incoming-requests-grid" style={{marginTop: 16}}>
-              {incomingRequests.length === 0 ? (
-                <div className="empty-state" style={{padding:'var(--space-8) 0'}}>
-                  <div className="empty-state-icon"><Bell size={22} style={{color:'var(--text-muted)'}}/></div>
-                  <div className="empty-state-title">No pending requests</div>
-                </div>
-              ) : incomingRequests.map(req=>(
-                <div key={req.id} className="incoming-req-card" style={{background: 'var(--surface)', borderRadius: 8, padding: 16, border: '1px solid var(--border)'}}>
-                  <div className="incoming-req-top" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 12}}>
-                    <div>
-                      <div className="incoming-req-title" style={{fontWeight: 600, fontSize: 15}}>{req.jobTitle}</div>
-                      <div className="incoming-req-from" style={{fontSize: 12.5, color: 'var(--text-secondary)'}}>From {req.sentBy}</div>
-                    </div>
-                    <div className="incoming-req-budget" style={{fontWeight: 700, color: 'var(--accent-green)'}}>₹{req.budget.toLocaleString()}</div>
-                  </div>
-                  <div className="incoming-req-meta" style={{display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-muted)', marginBottom: 16}}>
-                    <span style={{display: 'flex', alignItems: 'center', gap: 4}}><MapPin size={12}/> {req.venue}</span>
-                    <span style={{display: 'flex', alignItems: 'center', gap: 4}}><Clock size={12}/> {req.date}</span>
-                    <span className="role-dot-pill" style={{background:ROLE_TYPES[req.role]?.bg,color:ROLE_TYPES[req.role]?.color, padding: '2px 8px', borderRadius: 12}}>
-                      {req.role}
-                    </span>
-                  </div>
-                  {req.notes && <div className="incoming-req-notes" style={{fontSize: 13, fontStyle: 'italic', color: 'var(--text-secondary)', marginBottom: 16}}>{req.notes}</div>}
-
-                  {acceptingId === req.id ? (
-                    <div className="incoming-req-payment">
-                      <div style={{fontSize:12.5,fontWeight:600,color:'var(--text-secondary)',marginBottom:6}}>
-                        Enter your payment amount (optional):
-                      </div>
-                      <div style={{display:'flex',gap:8}}>
-                        <input
-                          type="number"
-                          className="input-field input-sm"
-                          placeholder={`Default: ₹${req.budget}`}
-                          value={paymentInput}
-                          onChange={e=>setPaymentInput(e.target.value)}
-                          style={{flex:1}}
-                        />
-                        <button className="btn btn-primary btn-sm" onClick={()=>handleAccept(req)}>
-                          <Check size={13}/> Confirm
-                        </button>
-                        <button className="btn btn-secondary btn-sm" onClick={()=>setAcceptingId(null)}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="incoming-req-actions" style={{display: 'flex', gap: 8}}>
-                      <button className="btn btn-primary" onClick={()=>handleAccept(req)} style={{flex: 1, justifyContent: 'center'}}>
-                        <Check size={14}/> Accept
-                      </button>
-                      <button className="btn btn-danger" onClick={()=>handleDecline(req)} style={{flex: 1, justifyContent: 'center'}}>
-                        <X size={14}/> Decline
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+          {/* ─── ACTIVE ASSIGNMENTS ─── */}
+          <div className="card card-padding">
+            <div className="section-header">
+              <h2 className="section-title">Current Assignments</h2>
             </div>
-          ) : (
-            <div className="card card-padding" style={{marginTop: 16}}>
-              {myAssignments.length === 0 ? (
-                <div className="empty-state" style={{padding:'var(--space-8) 0'}}>
-                  <div className="empty-state-icon"><Briefcase size={22} style={{color:'var(--accent-blue)'}}/></div>
-                  <div className="empty-state-title">No active assignments</div>
-                  <div className="empty-state-desc">Accept incoming requests to see them here</div>
-                </div>
-              ) : (
-                <div className="upcoming-jobs-list" style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-                  {myAssignments.map(req=>(
-                    <div key={req.id} className="upcoming-job-row" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, border: '1px solid var(--border)', borderRadius: 8}}>
-                      <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
-                        <div className="role-dot-circle" style={{background:ROLE_TYPES[req.role]?.color,width:10,height:10,borderRadius:'50%',flexShrink:0}}/>
-                        <div className="upcoming-job-info">
-                          <div className="upcoming-job-title" style={{fontWeight: 600, fontSize: 14}}>{req.jobTitle}</div>
-                          <div className="upcoming-job-meta" style={{display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--text-secondary)', marginTop: 4}}>
-                            <span style={{display: 'flex', alignItems: 'center', gap: 4}}><Clock size={11}/> {req.date}</span>
-                            <span style={{display: 'flex', alignItems: 'center', gap: 4}}><MapPin size={11}/> {req.venue}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <span className="role-dot-pill" style={{background:ROLE_TYPES[req.role]?.bg,color:ROLE_TYPES[req.role]?.color, padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600}}>
-                        {req.role}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="dashboard-right">
-          {/* Next Week Work Panel */}
-          <div className="card card-padding" style={{marginBottom: 16}}>
-            <div className="card-header" style={{marginBottom: 16}}>
-              <div>
-                <div className="card-title">Next Week Work</div>
-                <div className="card-subtitle">Upcoming jobs starting Sunday</div>
-              </div>
-            </div>
-            {nextWeekJobs.length === 0 ? (
-              <div style={{color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '16px 0'}}>No jobs scheduled for next week.</div>
+            {activeAssignmentsCount === 0 ? (
+              <EmptyState 
+                title="No Active Assignments" 
+                message="Your schedule is clear for today."
+              />
             ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-                {nextWeekJobs.map((job, idx) => (
-                  <div key={idx} style={{background: 'var(--surface-hover)', padding: 12, borderRadius: 6}}>
-                    <div style={{fontWeight: 600, fontSize: 13, marginBottom: 4}}>{job.jobTitle}</div>
-                    <div style={{fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4}}>
-                      <Clock size={10} /> {job.date}
+              <div className="assignments-compact">
+                {jobRequests.filter(r => r.status === 'accepted').slice(0, 3).map(req => (
+                  <div key={req.id} className="assignment-row">
+                    <div className="assignment-info">
+                      <div className="assign-title">{req.jobTitle}</div>
+                      <div className="assign-role">{req.role}</div>
                     </div>
+                    <div className="assign-date">{req.date}</div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          
-          {/* Mini Calendar widget here if needed */}
+        </div>
+
+        <div className="dashboard-content-right">
+          {/* ─── NEXT WEEK WORK (COMBINED) ─── */}
+          <div className="card card-padding next-week-panel">
+            <div className="card-header">
+              <div className="card-title">Next Week Work</div>
+              <p className="card-subtitle">Studio + Freelance schedule</p>
+            </div>
+            <div className="next-week-list">
+              {nextWeekWork.length === 0 ? (
+                <div className="empty-mini">Clear schedule for next week.</div>
+              ) : nextWeekWork.map((item, idx) => (
+                <div key={idx} className={`next-week-item ${item.type}`}>
+                  <div className="item-type-tag">{item.type}</div>
+                  <div className="item-title">{item.title}</div>
+                  <div className="item-date"><Clock size={10} /> {item.date}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <MiniCalendar />
         </div>
       </div>
 
-      {/* Floating Action Button */}
-      {createPortal(
-        <NavLink to="/calendar" className="fab" style={{
-          position: 'fixed', bottom: 32, right: 32, 
-          height: 56, borderRadius: 28, padding: '0 24px',
-          background: 'var(--accent-blue)', color: '#fff', 
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-          boxShadow: '0 4px 12px rgba(59,130,246,0.4)', cursor: 'pointer',
-          zIndex: 1000, textDecoration: 'none', fontWeight: 600, fontSize: 15
-        }}>
-          <Calendar size={20} />
-          Add Job
+      {/* Floating Action Button - Connected to Job Hub creation */}
+      {isPhotographerMode && createPortal(
+        <NavLink to="/job-hub" className="fab-ecosystem">
+          <Plus size={20} />
+          Create New Job
         </NavLink>,
+        document.body
+      )}
+
+
+      {/* Welcome Popup - Only shows once after login/signup */}
+      {user.isOnTrial && !user.trialModalDismissed && createPortal(
+        <div className="modal-overlay" style={{zIndex:2000}}>
+          <div className="modal card-padding" style={{maxWidth:400,textAlign:'center'}}>
+            <div style={{fontSize:48,marginBottom:16}}>✨</div>
+            <h2 style={{margin:'0 0 8px 0'}}>Welcome to Lumière</h2>
+            <p style={{color:'var(--text-secondary)',fontSize:14,marginBottom:24,lineHeight:1.5}}>
+              Your complete photography management platform. Manage your jobs, team, and bookings all in one place.
+            </p>
+            <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}} onClick={handleDismissTrial}>
+              Get Started
+            </button>
+          </div>
+        </div>,
         document.body
       )}
     </div>

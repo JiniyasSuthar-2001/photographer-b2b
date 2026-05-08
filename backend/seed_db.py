@@ -80,7 +80,8 @@ def seed_data():
             date=datetime.utcnow() - timedelta(days=i*10),
             studio_owner_id=owner.id,
             category="Wedding" if i % 2 == 0 else "Portrait",
-            status="completed" if i > 5 else "open"
+            status="completed" if i > 5 else "open",
+            roles="Lead,Candid,Drone" if i % 2 == 0 else "Portrait,Assistant"
         )
         db.add(job)
         db.commit()

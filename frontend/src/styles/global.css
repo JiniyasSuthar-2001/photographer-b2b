@@ -2,56 +2,61 @@
    Lumière – Global Design System
    ───────────────────────────────────────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
 
 /* ── CSS Variables ──────────────────────────────────────────────────────────── */
 :root {
   /* Backgrounds */
-  --bg-base:        #F9FAFB;
+  --bg-base:        #EEF2F6; /* Muted Soft Gray for better contrast */
   --bg-card:        #FFFFFF;
   --bg-sidebar:     #FFFFFF;
-  --bg-hover:       #F3F4F6;
-  --bg-active:      #EFF6FF;
+  --bg-hover:       #F8FAFC;
+  --bg-active:      rgba(99, 102, 241, 0.08);
 
-  /* Brand Gradient */
-  --primary-start:  #3B82F6;
-  --primary-end:    #2DD4BF;
-  --gradient:       linear-gradient(135deg, #3B82F6, #2DD4BF);
-  --gradient-soft:  linear-gradient(135deg, rgba(59,130,246,0.08), rgba(45,212,191,0.08));
-  --gradient-text:  linear-gradient(135deg, #3B82F6, #2DD4BF);
+  /* Brand Gradient - Sophisticated Violet/Indigo (Adjusted for Light Mode) */
+  --primary-start:  #6366F1;
+  --primary-end:    #A855F7;
+  --gradient:       linear-gradient(135deg, #6366F1, #A855F7);
+  --gradient-soft:  linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08));
+  --gradient-text:  linear-gradient(135deg, #6366F1, #A855F7);
 
   /* Accent Colors */
   --accent-blue:    #3B82F6;
-  --accent-teal:    #2DD4BF;
+  --accent-teal:    #14B8A6;
   --accent-purple:  #8B5CF6;
   --accent-amber:   #F59E0B;
   --accent-rose:    #F43F5E;
   --accent-green:   #10B981;
 
-  /* Text */
-  --text-primary:   #111827;
-  --text-secondary: #6B7280;
-  --text-muted:     #9CA3AF;
+  /* Text - Optimised for Light Mode */
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
   --text-inverse:   #FFFFFF;
 
   /* Borders */
-  --border:         #E5E7EB;
-  --border-light:   #F3F4F6;
-  --border-focus:   #3B82F6;
+  --border:         rgba(0, 0, 0, 0.06);
+  --border-light:   rgba(0, 0, 0, 0.03);
+  --border-focus:   #6366F1;
 
-  /* Shadows */
-  --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
-  --shadow-xl:  0 16px 40px rgba(0,0,0,0.12);
+  /* Shadows - Subtle and Soft for Light Mode */
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm:  0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md:  0 8px 16px rgba(0,0,0,0.08);
+  --shadow-lg:  0 12px 32px rgba(0,0,0,0.1);
+  --shadow-xl:  0 20px 48px rgba(0,0,0,0.12);
+
+  /* Glassmorphism */
+  --glass-bg:       rgba(255, 255, 255, 0.7);
+  --glass-border:   rgba(255, 255, 255, 0.3);
+  --glass-blur:     12px;
 
   /* Border Radius */
-  --radius-xs:   4px;
-  --radius-sm:   8px;
-  --radius:      12px;
-  --radius-lg:   16px;
-  --radius-xl:   20px;
+  --radius-xs:   8px;
+  --radius-sm:   12px;
+  --radius:      16px;
+  --radius-lg:   24px;
+  --radius-xl:   32px;
   --radius-pill: 9999px;
 
   /* Spacing */
@@ -67,13 +72,13 @@
   --space-16: 64px;
 
   /* Sidebar */
-  --sidebar-width: 256px;
-  --sidebar-width-collapsed: 68px;
-  --topbar-height: 64px;
+  --sidebar-width: 280px;
+  --sidebar-width-collapsed: 80px;
+  --topbar-height: 72px;
 
   /* Transitions */
-  --transition: 0.2s ease;
-  --transition-slow: 0.35s ease;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -93,21 +98,29 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg-base);
   color: var(--text-primary);
-  line-height: 1.5;
+  line-height: 1.6;
   overflow-x: hidden;
 }
 
-/* ── Radial Grid Background ─────────────────────────────────────────────────── */
+/* ── Sophisticated Background ───────────────────────────────────────────────── */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(59,130,246,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59,130,246,0.035) 1px, transparent 1px),
-    radial-gradient(ellipse at 20% 30%, rgba(59,130,246,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 70%, rgba(45,212,191,0.05) 0%, transparent 60%);
-  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.015;
+  mix-blend-mode: multiply;
   pointer-events: none;
   z-index: 0;
 }
@@ -118,17 +131,22 @@ body::before {
 }
 
 /* ── Typography ─────────────────────────────────────────────────────────────── */
-h1 { font-size: 28px; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; }
-h2 { font-size: 22px; font-weight: 600; line-height: 1.3; letter-spacing: -0.015em; }
-h3 { font-size: 18px; font-weight: 600; line-height: 1.35; letter-spacing: -0.01em; }
-h4 { font-size: 16px; font-weight: 600; line-height: 1.4; }
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-primary);
+}
+
+h1 { font-size: 36px; font-weight: 800; line-height: 1.1; letter-spacing: -0.04em; }
+h2 { font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; }
+h3 { font-size: 22px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; }
+h4 { font-size: 18px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; }
 h5 { font-size: 14px; font-weight: 600; line-height: 1.4; }
 h6 { font-size: 12px; font-weight: 500; line-height: 1.5; }
 
-p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+p { font-size: 14.5px; line-height: 1.6; color: var(--text-secondary); }
 
-a { color: var(--accent-blue); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a { color: var(--primary-start); text-decoration: none; transition: var(--transition); }
+a:hover { color: var(--primary-end); }
 
 /* ── Scrollbars ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }

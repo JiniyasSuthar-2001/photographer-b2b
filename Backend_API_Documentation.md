@@ -1,5 +1,3 @@
-# Lumière Backend API Documentation
-
 This document serves as a living registry of all API endpoints implemented in the Lumière project. It details the paths, implementation layers, and the technical rationale behind each design choice.
 
 ---
@@ -105,15 +103,47 @@ The team layer manages relationships between studio owners and photographers, in
   - Includes calculated fields like `jobsCompleted` (shared work history).
 - **Rationale**: Core dashboard view for team management.
 
+### GET `/requests/pending`
+- **Full Path**: `http://localhost:8000/api/team/requests/pending`
+- **Implementation Details**: Fetches team invitations sent **to** the current user by other studios.
+- **Rationale**: Essential for cross-studio collaboration.
+
+### GET `/joined`
+- **Full Path**: `http://localhost:8000/api/team/joined`
+- **Implementation Details**: Lists all studios where the current user is a team member.
+- **Rationale**: Provides visibility into the user's external professional network.
+
 ---
 
-## 3. Notification Layer (`/api/notifications`)
+## 3. Analytics Layer (`/api/analytics`)
+
+Provides business intelligence and performance metrics for both Photographers and Studio Owners.
+
+### GET `/stats`
+- **Full Path**: `http://localhost:8000/api/analytics/stats`
+- **Implementation Details**: Returns high-level metrics like Total Jobs, Total Revenue, and Growth Percentage.
+- **Rationale**: Power the summary cards at the top of the Analytics dashboard.
+
+### GET `/trends`
+- **Full Path**: `http://localhost:8000/api/analytics/trends`
+- **Implementation Details**: Returns monthly revenue and booking volume for charting.
+- **Rationale**: Visualizes financial growth over time.
+
+### GET `/categories`
+- **Full Path**: `http://localhost:8000/api/analytics/categories`
+- **Implementation Details**: Returns a distribution of jobs across different categories.
+- **Rationale**: Helps users identify their most profitable niche.
+
+---
+
+## 4. Notification Layer (`/api/notifications`)
 
 Handles user alerts for team and job-related activities.
 
 ### GET `/notifications/`
 - **Full Path**: `http://localhost:8000/api/notifications/`
 - **Implementation Details**: Paginated list of notifications for the current user.
+- **Real-Time Integration**: Although polled every 30s as a fallback, new notifications are now pushed instantly via the `/ws` endpoint.
 - **Rationale**: Keeps users informed of platform activities.
 
 ### PATCH `/notifications/{id}/read`
@@ -126,7 +156,7 @@ Handles user alerts for team and job-related activities.
 
 ---
 
-## 4. Job Request Layer (`/api/requests`)
+## 5. Job Request Layer (`/api/requests`)
 
 Handles professional job invites (distinct from team membership).
 
@@ -134,12 +164,14 @@ Handles professional job invites (distinct from team membership).
 - **Full Path**: `http://localhost:8000/api/requests/`
 - **Implementation Details**:
   - Sends a job invite and triggers a notification for the receiver with `redirect_to: "/job-hub"`.
+  - **Real-Time Impact**: Triggers an immediate WebSocket broadcast (`NEW_NOTIFICATION`) to the receiver.
 
 ### PATCH `/requests/{id}`
 - **Full Path**: `http://localhost:8000/api/requests/{id}`
 - **Implementation Details**:
   - Accepts/declines a job invite, creating an assignment on acceptance.
-  - Triggers notifications for both parties with `redirect_to: "/job-hub"`.
+  - **Budget Integrity**: Photographers cannot modify the budget; acceptance is hardcoded to the original offer.
+  - **Real-Time Impact**: Notifies both the sender and receiver instantly via WebSockets of the response status.
 
 ### GET `/eligible-jobs/{photographer_id}`
 - **Full Path**: `http://localhost:8000/api/requests/eligible-jobs/{photographer_id}`
@@ -168,7 +200,7 @@ Handles professional job invites (distinct from team membership).
 
 ---
 
-## 5. Job Management Layer (`/api/jobs`)
+## 6. Job Management Layer (`/api/jobs`)
 
 Handles the lifecycle of professional photography assignments.
 
@@ -180,9 +212,51 @@ Handles the lifecycle of professional photography assignments.
 - **Full Path**: `http://localhost:8000/api/jobs/`
 - **Implementation Details**: Returns all jobs owned by the authenticated studio owner.
 
+### PUT `/{id}`
+- **Full Path**: `http://localhost:8000/api/jobs/{id}`
+- **Implementation Details**: Updates existing job metadata (Title, Location, Budget, etc.).
+
+### DELETE `/{id}`
+- **Full Path**: `http://localhost:8000/api/jobs/{id}`
+- **Implementation Details**: Permanently deletes a job and its associated requests.
+
 ---
 
-## 6. Global API Configuration
+## 7. Webhooks Layer (`/api/webhooks`)
+
+Provides endpoints for external service integrations and internal system triggers.
+
+### POST `/external-event`
+- **Full Path**: `http://localhost:8000/api/webhooks/external-event`
+- **Implementation Details**:
+  - Receiver for external payloads (Meta, Stripe).
+  - Processes incoming data and broadcasts updates to the corresponding user via WebSockets.
+- **Rationale**: Decouples external event handling from the main API business logic.
+
+### POST `/trigger-refresh`
+- **Full Path**: `http://localhost:8000/api/webhooks/trigger-refresh`
+- **Implementation Details**:
+  - Backend-initiated trigger to force a specific UI page to refresh its data.
+- **Rationale**: Essential for "proper connection" between state changes and user views.
+
+---
+
+## 8. Real-Time Layer (`/ws`)
+
+The real-time layer maintains persistent connections to users for instant page updates.
+
+### WebSocket `/ws`
+- **Full Path**: `ws://localhost:8000/ws`
+- **Parameters**: `token` (JWT query parameter)
+- **Implementation Details**:
+  - Manages active user sessions using a `ConnectionManager`.
+  - Authenticates during the handshake phase.
+  - Replaces traditional polling with low-latency event pushing.
+- **Rationale**: Essential for professional-grade synchronization between users.
+
+---
+
+## 9. Global API Configuration
 
 ### Base URL
 - **Development**: `http://localhost:8000/api`
@@ -198,8 +272,11 @@ Handles the lifecycle of professional photography assignments.
 ## Technical Standards
 
 1. **Validation**: All inputs and outputs are strictly typed using **Pydantic** (`backend/models/schemas.py`).
-2. **Layering**:
+2. **Currency Standard**: All financial values are processed as integers and formatted using the **Indian Rupee (₹)** standard across the entire platform.
+3. **Real-Time Delivery**: Actions that impact multiple users (Job Invites, Responses) MUST trigger a WebSocket broadcast via the `ConnectionManager`.
+4. **Layering**:
    - **Routers**: Only handle HTTP status codes and endpoint definitions.
    - **Services**: Contain the actual logic and database calls.
+   - **Core**: Contains infrastructure like `websocket.py` and `config.py`.
    - **DB**: Provides the SQLAlchemy `SessionLocal` instance via the `get_db` dependency.
-3. **Error Handling**: Uses FastAPI's `HTTPException` to return consistent JSON error objects (e.g., `{"detail": "Error message"}`).
+5. **Error Handling**: Uses FastAPI's `HTTPException` to return consistent JSON error objects (e.g., `{"detail": "Error message"}`).

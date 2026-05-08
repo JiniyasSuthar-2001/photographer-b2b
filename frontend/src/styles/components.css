@@ -28,13 +28,13 @@
 .btn-primary {
   background: var(--gradient);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 .btn-primary:hover {
-  box-shadow: 0 4px 14px rgba(59,130,246,0.35);
-  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45);
+  transform: translateY(-2px) scale(1.02);
 }
-.btn-primary:active { transform: scale(0.97) translateY(0); }
+.btn-primary:active { transform: scale(0.98) translateY(0); }
 
 .btn-secondary {
   background: transparent;
@@ -78,6 +78,7 @@
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  backdrop-filter: blur(var(--glass-blur));
 }
 
 .card-hover {
@@ -85,9 +86,10 @@
   cursor: pointer;
 }
 .card-hover:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-  border-color: rgba(59,130,246,0.2);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  border-color: rgba(124, 58, 237, 0.3);
+  background: var(--bg-hover);
 }
 
 .card-padding { padding: var(--space-6); }
@@ -114,10 +116,10 @@
 
 /* ── Stat Cards ─────────────────────────────────────────────────────────────── */
 .stat-card {
-  background: var(--bg-card);
+  background: var(--glass-bg);
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -125,6 +127,7 @@
   transition: all var(--transition);
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(var(--glass-blur));
 }
 
 .stat-card::before {
@@ -133,15 +136,16 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 4px;
   background: var(--gradient);
-  opacity: 0;
+  opacity: 0.6;
   transition: opacity var(--transition);
 }
 
 .stat-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-4px);
+  background: var(--bg-card);
 }
 .stat-card:hover::before { opacity: 1; }
 

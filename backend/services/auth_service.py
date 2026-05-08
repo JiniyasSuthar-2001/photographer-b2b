@@ -1,3 +1,10 @@
+# ==================================================================================
+# SERVICE: AUTHENTICATION
+# Purpose: Core security logic for passwords, JWT tokens, and user sessions.
+# Connected Routers: backend/routers/auth.py
+# Impact: Every secure endpoint in the API depends on get_current_user logic here.
+# ==================================================================================
+
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -6,6 +13,8 @@ from sqlalchemy.orm import Session
 from models.models import User
 from models.schemas import UserLogin, UserSignUp
 from core.config import settings
+from .demo_service import demo_service
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -47,12 +56,17 @@ class AuthService:
                         username=user_data.username,
                         hashed_password=AuthService.get_password_hash(user_data.password),
                         full_name=user_data.username.capitalize(),
-                        user_type="studio_owner",
+                        user_type="photographer",
                         phone=f"000{list(HARDCODED_USERS.keys()).index(user_data.username)}" # Dummy phone
                     )
+
                     db.add(user)
                     db.commit()
                     db.refresh(user)
+                
+                # SEED DEMO DATA for Admin
+                demo_service.seed_admin_data(db, user.id)
+                
                 return user
         
         user = db.query(User).filter(User.username == user_data.username).first()

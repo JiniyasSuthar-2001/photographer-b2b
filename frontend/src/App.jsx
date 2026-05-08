@@ -9,11 +9,19 @@ import Analytics from './pages/Analytics';
 import Profile from './pages/Profile';
 import Team from './pages/Team';
 import Notes from './pages/Notes';
+import Pricing from './pages/Pricing';
 import AuthPage from './pages/AuthPage';
+import { useWebSockets } from './hooks/useWebSockets';
 import './styles/global.css';
 import './styles/components.css';
 
 const STORAGE_KEY = 'events:v1';
+
+// Real-time connection wrapper
+function RealTimeProvider({ children }) {
+  useWebSockets(); // Establishes connection between users and pages
+  return children;
+}
 
 // Authentication Guard Component
 function RequireAuth({ children }) {
@@ -46,24 +54,27 @@ export default function App() {
 
   return (
     <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Auth Route is separate from Layout */}
-          <Route path="/auth" element={<AuthPage />} />
-          
-          {/* Protected Routes wrapped in RequireAuth */}
-          <Route path="/"          element={<RequireAuth><Dashboard /></RequireAuth>} />
-          <Route path="/job-hub"   element={<RequireAuth><JobHub /></RequireAuth>} />
-          <Route path="/team"      element={<RequireAuth><Team /></RequireAuth>} />
-          <Route path="/calendar"  element={<RequireAuth><Calendar /></RequireAuth>} />
-          <Route path="/analytics" element={<RequireAuth><AnalyticsGuard /></RequireAuth>} />
-          <Route path="/notes"     element={<RequireAuth><Notes /></RequireAuth>} />
-          <Route path="/profile"   element={<RequireAuth><Profile /></RequireAuth>} />
-          
-          {/* Fallback */}
-          <Route path="*"          element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <RealTimeProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Auth Route is separate from Layout */}
+            <Route path="/auth" element={<AuthPage />} />
+            
+            {/* Protected Routes wrapped in RequireAuth */}
+            <Route path="/"          element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="/job-hub"   element={<RequireAuth><JobHub /></RequireAuth>} />
+            <Route path="/team"      element={<RequireAuth><Team /></RequireAuth>} />
+            <Route path="/calendar"  element={<RequireAuth><Calendar /></RequireAuth>} />
+            <Route path="/analytics" element={<RequireAuth><AnalyticsGuard /></RequireAuth>} />
+            <Route path="/notes"     element={<RequireAuth><Notes /></RequireAuth>} />
+            <Route path="/profile"   element={<RequireAuth><Profile /></RequireAuth>} />
+            <Route path="/pricing"   element={<RequireAuth><Pricing /></RequireAuth>} />
+            
+            {/* Fallback */}
+            <Route path="*"          element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </RealTimeProvider>
     </AppProvider>
   );
 }

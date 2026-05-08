@@ -14,7 +14,7 @@ const PAGE_TITLES = {
   '/profile':   'Profile',
 };
 
-const PAGE_TITLES_FREELANCER = {
+const PAGE_TITLES_PHOTOGRAPHER = {
   '/':          'Dashboard',
   '/job-hub':   'Job Hub',
   '/calendar':  'My Calendar',
@@ -26,7 +26,7 @@ export default function TopBar() {
   const { user } = state;
   const location = useLocation();
 
-  const titles = user.mode === 'freelancer' ? PAGE_TITLES_FREELANCER : PAGE_TITLES;
+  const titles = user.mode === 'photographer' ? PAGE_TITLES_PHOTOGRAPHER : PAGE_TITLES;
   const title = titles[location.pathname] || 'Lumière';
 
   return (
@@ -34,7 +34,7 @@ export default function TopBar() {
       <div className="topbar-title">
         <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.02 + 'em' }}>{title}</h1>
         <span className="topbar-greeting">
-          Welcome back, {user.name.split(' ')[0]} ✦
+          Welcome back, {(user.full_name || user.username || '').split(' ')[0]} ✦
         </span>
       </div>
 
@@ -42,7 +42,7 @@ export default function TopBar() {
         {/* Mode Chip */}
         <div className="topbar-mode-chip">
           <span className="topbar-mode-dot" />
-          {user.mode === 'freelancer' ? 'Freelancer' : 'Studio Owner'}
+          {user.mode === 'photographer' ? 'Photographer' : 'Studio Owner'}
         </div>
 
         {/* Notifications */}
@@ -51,7 +51,7 @@ export default function TopBar() {
         {/* Avatar */}
 
         {/* Avatar */}
-        <Avatar name={user.name} size="sm" />
+        <Avatar name={user.full_name || user.username} size="sm" />
       </div>
     </header>
   );

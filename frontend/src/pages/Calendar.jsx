@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   ChevronLeft, ChevronRight, Download, Clock, MapPin, X, Plus,
   Briefcase, AlertTriangle, Check, Info, Calendar as CalendarIcon
 } from 'lucide-react';
 import { ROLE_TYPES } from '../data/mockData';
+import { jobService, requestService } from '../services/api';
 import './Calendar.css';
 
 const AVAIL_COLORS = {
@@ -21,6 +22,7 @@ const ROLE_KEYS = Object.keys(ROLE_TYPES);
 export default function Calendar() {
   const { state, dispatch, addToast } = useApp();
   const { jobs, jobRequests, availability } = state;
+  const [isLoading, setIsLoading] = useState(false);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -54,8 +56,14 @@ export default function Calendar() {
 
   const getDayJobs = (day) => {
     const ds = typeof day === 'string' ? day : getDateStr(day);
-    const posted = jobs.filter(j => j.date === ds);
-    const acceptedReqs = jobRequests.filter(r => r.status === 'accepted' && r.date === ds);
+    const posted = jobs.filter(j => {
+      const jobDateStr = typeof j.date === 'string' ? j.date.split('T')[0] : '';
+      return jobDateStr === ds;
+    });
+    const acceptedReqs = jobRequests.filter(r => {
+      const reqDateStr = typeof r.date === 'string' ? r.date.split('T')[0] : '';
+      return (r.status === 'accepted' || r.status === 'assigned') && reqDateStr === ds;
+    });
     return { posted, acceptedReqs };
   };
 
@@ -66,6 +74,22 @@ export default function Calendar() {
 
   const selectedDateStr = selectedDate ? getDateStr(selectedDate) : null;
   const { posted: selectedPosted, acceptedReqs: selectedAccepted } = selectedDate ? getDayJobs(selectedDate) : { posted: [], acceptedReqs: [] };
+
+  // --- SYNC DATA WITH BACKEND ---
+  useEffect(() => {
+    const fetchBackendData = async () => {
+      setIsLoading(true);
+      try {
+        const backendJobs = await jobService.getJobs();
+        dispatch({ type: 'SET_JOBS', payload: backendJobs });
+      } catch (err) {
+        console.error('Failed to sync calendar:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBackendData();
+  }, []);
 
   const checkConflicts = (type) => {
     const conflicts = [];
@@ -86,37 +110,38 @@ export default function Calendar() {
 
   const proceedUnavailable = () => {
     selectedDates.forEach(date => {
-      const userAccepted = jobRequests.filter(r => r.status === 'accepted' && r.date === date);
-      userAccepted.forEach(req => {
-        dispatch({ type: 'CANCEL_ACCEPTED_REQUEST', payload: req.id });
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          payload: {
-            id: Date.now() + Math.random(),
-            type: 'job',
-            message: `⚠️ alex@lumiere.io marked ${date} as ${myJobsReason}. Job "${req.jobTitle}" role "${req.role}" is now FREE.`,
-            time: 'just now',
-            read: false
-          }
-        });
-      });
       dispatch({ type: 'SET_AVAILABILITY', payload: { date, status: 'blocked' } });
     });
-
     addToast(`📅 ${selectedDates.length} days marked as ${myJobsReason}`, 'info');
     setSelectedDates([]);
   };
 
-  const handleAddJob = () => {
+  const handleAddJob = async () => {
     if (!newJob.title || selectedDates.length === 0) return;
-    selectedDates.forEach(date => {
-      const id = 'J' + String(Date.now() + Math.floor(Math.random() * 1000)).slice(-4);
-      dispatch({ type: 'ADD_JOB', payload: { ...newJob, id, date, status: 'open', assignedTo: null, budget: parseFloat(newJob.budget) || 0, tags: [], roles: newJob.roles } });
-    });
-    addToast(`✅ Job posted for ${selectedDates.length} date(s)`, 'success');
-    setShowNewJobModal(false);
-    setSelectedDates([]);
-    setNewJob({ title: '', client: '', venue: '', budget: '', roles: [], notes: '' });
+    
+    setIsLoading(true);
+    try {
+      for (const date of selectedDates) {
+        await jobService.createJob({
+          title: newJob.title,
+          category: newJob.roles[0] || 'General',
+          date: date
+        });
+      }
+      addToast(`✅ Job(s) posted successfully for ${selectedDates.length} date(s)`, 'success');
+      
+      // Refresh local list
+      const updatedJobs = await jobService.getJobs();
+      dispatch({ type: 'SET_JOBS', payload: updatedJobs });
+      
+      setShowNewJobModal(false);
+      setSelectedDates([]);
+      setNewJob({ title: '', client: '', venue: '', budget: '', roles: [], notes: '' });
+    } catch (err) {
+      addToast('Failed to post jobs to backend', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePickerSelect = (mIndex) => {
@@ -384,7 +409,9 @@ export default function Calendar() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowNewJobModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleAddJob} disabled={!newJob.title}>Post Jobs</button>
+              <button className="btn btn-primary" onClick={handleAddJob} disabled={!newJob.title || isLoading}>
+                {isLoading ? 'Posting...' : 'Post Jobs'}
+              </button>
             </div>
           </div>
         </div>

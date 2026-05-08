@@ -1,3 +1,9 @@
+# ==================================================================================
+# TEAM ROUTER
+# Purpose: Manages the Studio Owner's photographer directory and work history.
+# Affected Pages: Frontend -> Team.jsx, JobHub.jsx (CollaborationModal)
+# ==================================================================================
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -5,9 +11,15 @@ from db.database import get_db
 from models import models
 from models.schemas import CollaborationResponse, UserSearchResponse, TeamRequestCreate, TeamRequestResponse, TeamMemberUpdate
 from routers.auth import get_current_user
+from services.notification_service import NotificationService
+from core.websocket import manager
+from typing import Optional
 import math
+from services.team_service import team_service
 
 router = APIRouter(prefix="/team", tags=["Team"])
+
+# --- ENDPOINTS ---
 
 @router.get("/collaborations/{member_id}", response_model=CollaborationResponse)
 async def get_collaborations(
@@ -17,6 +29,12 @@ async def get_collaborations(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Fetches past jobs shared between the Studio Owner and a specific Photographer.
+    Frontend Impact: Populates the list inside CollaborationModal in JobHub.jsx.
+    Modification Risk: If pagination logic changes, the modal's 'Next/Prev' buttons 
+    may stop functioning.
+    """
     # Only return jobs where member_id = selected photographer AND job belongs to logged-in user
     query = db.query(models.Job, models.Assignment.role).\
         join(models.Assignment, models.Job.id == models.Assignment.job_id).\
@@ -48,6 +66,10 @@ async def get_collaborations(
 
 @router.get("/users/search", response_model=UserSearchResponse)
 async def search_user(phone: str, db: Session = Depends(get_db)):
+    """
+    Search for a registered photographer by phone number.
+    Frontend Impact: Triggered in Team.jsx when adding a 'Connected' member.
+    """
     user = db.query(models.User).filter(models.User.phone == phone).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -66,6 +88,11 @@ async def send_team_request(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Sends a request for a photographer to join the Studio Owner's directory.
+    Frontend Impact: Updates the UI state in Team.jsx after successfully adding a member.
+    Notification Impact: Alerts the Photographer via the NotificationBell.
+    """
     # Find receiver by phone number
     receiver = db.query(models.User).filter(models.User.phone == request.phone).first()
     if not receiver:
@@ -96,13 +123,21 @@ async def send_team_request(
     db.refresh(new_request)
 
     # Create notification for receiver
-    notification = models.Notification(
+    await NotificationService.create_notification(
+        db=db,
         user_id=receiver.id,
+        title="Team Invitation",
         message=f"{current_user.full_name} has invited you to join their team.",
-        redirect_to="/notifications" # Will handle in bell dropdown
+        notif_type="team_request",
+        reference_id=new_request.id,
+        redirect_to="/team" # Handled by Bell
     )
-    db.add(notification)
-    db.commit()
+
+    # Notify photographer to refresh their team requests
+    await manager.send_personal_message({
+        "type": "REFRESH_PAGE",
+        "page": "team"
+    }, receiver.id)
 
     return new_request
 
@@ -113,6 +148,11 @@ async def respond_to_request(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Handles photographer's response to a team invite.
+    Impact: If 'accepted', the photographer is added to the 'team' table 
+    and becomes visible in the Studio Owner's Team.jsx list.
+    """
     team_request = db.query(models.TeamRequest).filter(
         and_(
             models.TeamRequest.id == id,
@@ -126,7 +166,14 @@ async def respond_to_request(
     team_request.status = status
     
     if status == "accepted":
+        # TEAM LOCKING SYSTEM:
+        # Prevent user from joining multiple teams simultaneously to avoid conflicts.
+        already_joined = db.query(models.Team).filter(models.Team.member_id == current_user.id).first()
+        if already_joined:
+            raise HTTPException(status_code=400, detail="You are already connected to another team. Please leave your current team first.")
+
         # Add to team table with custom display info
+
         new_team_member = models.Team(
             owner_id=team_request.sender_id,
             member_id=team_request.receiver_id,
@@ -140,57 +187,96 @@ async def respond_to_request(
     db.commit()
     db.refresh(team_request)
 
-    # Create notification for sender (Studio Owner)
-    notification_sender = models.Notification(
+    # Notify Studio Owner
+    await NotificationService.create_notification(
+        db=db,
         user_id=team_request.sender_id,
+        title=f"Team Request {status.capitalize()}",
         message=f"{current_user.full_name} has {status} your invitation to join the team.",
+        notif_type="team_request_response",
+        reference_id=team_request.id,
         redirect_to="/team"
     )
-    db.add(notification_sender)
 
-    # Create notification for receiver (Photographer) - Confirmation
+    # Notify Photographer (Confirmation)
     sender_name = db.query(models.User).filter(models.User.id == team_request.sender_id).first().full_name
-    notification_receiver = models.Notification(
+    await NotificationService.create_notification(
+        db=db,
         user_id=current_user.id,
+        title=f"Team Request {status.capitalize()}",
         message=f"You have {status} {sender_name}'s invitation to join their team.",
+        notif_type="team_request_response",
+        reference_id=team_request.id,
         redirect_to="/team"
     )
-    db.add(notification_receiver)
-    
-    db.commit()
+
+    # Notify Studio Owner that team changed
+    await manager.send_personal_message({
+        "type": "REFRESH_PAGE",
+        "page": "team"
+    }, team_request.sender_id)
 
     return team_request
+
+@router.get("/requests/pending")
+async def get_pending_team_requests(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Fetches team invitations sent TO the current user.
+    """
+    requests = db.query(models.TeamRequest).filter(
+        and_(models.TeamRequest.receiver_id == current_user.id, models.TeamRequest.status == "pending")
+    ).all()
+    
+    data = []
+    for r in requests:
+        sender = db.query(models.User).filter(models.User.id == r.sender_id).first()
+        data.append({
+            "id": r.id,
+            "sender_name": sender.full_name,
+            "sender_phone": sender.phone,
+            "display_name": r.display_name,
+            "display_category": r.display_category,
+            "display_city": r.display_city,
+            "created_at": r.created_at
+        })
+    return data
+
+@router.get("/joined")
+async def get_joined_teams(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Fetches teams that the current user is a member of.
+    """
+    joined = db.query(models.Team).filter(models.Team.member_id == current_user.id).all()
+    
+    data = []
+    for entry in joined:
+        owner = db.query(models.User).filter(models.User.id == entry.owner_id).first()
+        data.append({
+            "id": entry.id,
+            "owner_name": owner.full_name,
+            "owner_phone": owner.phone,
+            "display_name": entry.display_name,
+            "display_category": entry.display_category,
+            "display_city": entry.display_city
+        })
+    return data
 
 @router.get("/")
 async def get_team(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    team_entries = db.query(models.Team).filter(models.Team.owner_id == current_user.id).all()
-    
-    # Return formatted data using display aliases
-    data = []
-    for entry in team_entries:
-        # Count jobs done together (using member_id for logic)
-        jobs_together = db.query(models.Assignment).\
-            join(models.Job, models.Assignment.job_id == models.Job.id).\
-            filter(and_(
-                models.Job.studio_owner_id == current_user.id,
-                models.Assignment.member_id == entry.member_id,
-                models.Job.status == "completed"
-            )).count()
-
-        data.append({
-            "id": entry.member_id,
-            "name": entry.display_name,
-            "city": entry.display_city,
-            "phone": entry.phone,
-            "category": entry.display_category,
-            "jobsCompleted": jobs_together,
-            "specialties": [entry.display_category] if entry.display_category else [],
-            "status": "available"
-        })
-    return data
+    """
+    Fetches the full team directory for a Studio Owner.
+    Frontend Impact: Populates the table in Team.jsx.
+    """
+    return team_service.get_team_directory(db, current_user.id)
 
 @router.patch("/{member_id}")
 async def update_team_member(
@@ -199,6 +285,12 @@ async def update_team_member(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Allows Studio Owners to edit the 'Alias' information for a team member.
+    Frontend Impact: Triggered by 'Edit' action in Team.jsx.
+    Note: This does NOT change the Photographer's actual profile, only their 
+    entry in the owner's directory.
+    """
     entry = db.query(models.Team).filter(
         and_(models.Team.owner_id == current_user.id, models.Team.member_id == member_id)
     ).first()
@@ -219,6 +311,10 @@ async def remove_team_member(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Removes a photographer from the Studio Owner's local directory.
+    Frontend Impact: Triggered by 'Delete' action in Team.jsx.
+    """
     entry = db.query(models.Team).filter(
         and_(models.Team.owner_id == current_user.id, models.Team.member_id == member_id)
     ).first()
@@ -229,3 +325,38 @@ async def remove_team_member(
     db.delete(entry)
     db.commit()
     return {"message": "Removed successfully"}
+
+@router.get("/discover")
+async def discover_photographers(
+    category: Optional[str] = None,
+    city: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Public directory of registered freelancers.
+    Frontend Impact: Populates the 'Discover' tab in Team.jsx.
+    """
+    query = db.query(models.User).filter(models.User.user_type == 'freelancer')
+
+    
+    if category:
+        query = query.filter(models.User.category.ilike(f"%{category}%"))
+    if city:
+        query = query.filter(models.User.city.ilike(f"%{city}%"))
+    
+    # Exclude users already in the team
+    team_ids = [t.member_id for t in db.query(models.Team).filter(models.Team.owner_id == current_user.id).all()]
+    if team_ids:
+        query = query.filter(~models.User.id.in_(team_ids))
+    
+    photographers = query.limit(50).all()
+    
+    return [{
+        "id": p.id,
+        "name": p.full_name,
+        "city": p.city,
+        "category": p.category,
+        "phone": p.phone,
+        "is_registered": True
+    } for p in photographers]

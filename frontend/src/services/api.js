@@ -1,3 +1,9 @@
+// ==================================================================================
+// API SERVICE LAYER
+// Purpose: Centralized handling of all backend communication.
+// Connects to: FastAPI Backend (backend/routers/*)
+// ==================================================================================
+
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000/api';
@@ -9,7 +15,7 @@ const apiClient = axios.create({
     },
 });
 
-// Interceptor to add token to headers
+// Automatically attaches JWT token to every request if available.
 apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -18,8 +24,26 @@ apiClient.interceptors.request.use((config) => {
     return config;
 });
 
+// --- ERROR HANDLING INTERCEPTOR ---
+// Automatically handles 401 Unauthorized by clearing session and redirecting.
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            // Impact: Prevents infinite loading/error loops by forcing re-auth.
+            window.location.href = '/auth';
+        }
+        return Promise.reject(error);
+    }
+);
+
+// --- AUTH SERVICE ---
+// Connects to: backend/routers/auth.py
 export const authService = {
     login: async (username, password) => {
+        // Impact: Critical for access. Stores token in localStorage.
         const response = await apiClient.post('/auth/login', { username, password });
         if (response.data.access_token) {
             localStorage.setItem('token', response.data.access_token);
@@ -27,26 +51,34 @@ export const authService = {
         }
         return response.data;
     },
-    signup: async (username, password) => {
-        const response = await apiClient.post('/auth/signup', { username, password });
+    signup: async (data) => {
+        const response = await apiClient.post('/auth/signup', data);
         return response.data;
     },
-    forgotPassword: async (username) => {
-        const response = await apiClient.post('/auth/forgot-password', { username });
-        return response.data;
-    },
-    logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+    logout: async () => {
+        try {
+            await apiClient.post('/auth/logout');
+        } catch (error) {
+            console.error('Logout failed:', error);
+        } finally {
+            // Impact: Clears session. Redirects user to login via state change.
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
     }
 };
 
+// --- NOTIFICATION SERVICE ---
+// Connects to: backend/routers/notifications.py
+// Used in: NotificationBell.jsx
 export const notificationService = {
     getNotifications: async (page = 1, limit = 20) => {
+        // Called by Polling mechanism in NotificationBell.jsx every 30s.
         const response = await apiClient.get(`/notifications/?page=${page}&limit=${limit}`);
         return response.data;
     },
     markAsRead: async (id) => {
+        // Triggered when clicking a notification in the bell dropdown.
         const response = await apiClient.patch(`/notifications/${id}/read`);
         return response.data;
     },
@@ -56,43 +88,136 @@ export const notificationService = {
     }
 };
 
+// --- JOB SERVICE ---
+// Connects to: backend/routers/jobs.py
+// Used in: JobHub.jsx (My Jobs tab)
 export const jobService = {
     getJobs: async () => {
+        // Fetches list for Studio Owners. 
+        // Logic Risk: JobHub.jsx filters these based on 'accepted_count'.
         const response = await apiClient.get('/jobs/');
         return response.data;
     },
     createJob: async (data) => {
         const response = await apiClient.post('/jobs/', data);
         return response.data;
+    },
+    updateJob: async (id, data) => {
+        const response = await apiClient.put(`/jobs/${id}`, data);
+        return response.data;
+    },
+    deleteJob: async (id) => {
+        const response = await apiClient.delete(`/jobs/${id}`);
+        return response.data;
     }
 };
 
+// --- REQUEST SERVICE ---
+// Connects to: backend/routers/requests.py
+// Used in: JobHub.jsx (Accepted Jobs/Invites tabs)
 export const requestService = {
     getInvites: async () => {
+        // Populates 'Invites' tab for Photographers.
         const response = await apiClient.get('/requests/?role=receiver&status=pending');
         return response.data;
     },
     getDeclinedInvites: async () => {
+        // Populates 'Declined Jobs' tab for Photographers.
         const response = await apiClient.get('/requests/?role=receiver&status=declined');
         return response.data;
     },
     getAcceptedJobs: async () => {
+        // Populates 'Accepted Jobs' tab for Photographers.
         const response = await apiClient.get('/requests/accepted-jobs');
         return response.data;
     },
     sendRequest: async (data) => {
+        // Triggered by 'Send Request' modal in Team.jsx.
         const response = await apiClient.post('/requests/', data);
         return response.data;
     },
     respondToRequest: async (id, status) => {
+        // Triggered by Accept/Decline buttons. 
+        // Logic Risk: Redirects to /requests/{id}?status=...
         const response = await apiClient.patch(`/requests/${id}?status=${status}`);
+        return response.data;
+    },
+    getRequestsByJob: async (jobId) => {
+        const response = await apiClient.get(`/requests/job/${jobId}`);
+        return response.data;
+    },
+    cancelRequest: async (id) => {
+        const response = await apiClient.delete(`/requests/${id}`);
         return response.data;
     }
 };
 
+// --- TEAM SERVICE ---
+// Connects to: backend/routers/team.py
+// Used in: JobHub.jsx (CollaborationModal)
 export const teamService = {
+    getTeam: async () => {
+        // Fetches the studio owner's team directory.
+        const response = await apiClient.get('/team/');
+        return response.data;
+    },
     getCollaborations: async (memberId, page = 1) => {
+        // Fetches shared work history for the Collaboration Modal.
         const response = await apiClient.get(`/team/collaborations/${memberId}?page=${page}&limit=10`);
+        return response.data;
+    },
+    discoverPhotographers: async (params) => {
+        const response = await apiClient.get('/team/discover', { params });
+        return response.data;
+    },
+    sendTeamRequest: async (data) => {
+        const response = await apiClient.post('/team/request', data);
+        return response.data;
+    },
+    getPendingRequests: async () => {
+        const response = await apiClient.get('/team/requests/pending');
+        return response.data;
+    },
+    getJoinedTeams: async () => {
+        const response = await apiClient.get('/team/joined');
+        return response.data;
+    },
+    respondToTeamRequest: async (id, status) => {
+        const response = await apiClient.patch(`/team/request/${id}?status=${status}`);
+        return response.data;
+    }
+};
+
+// --- TASK SERVICE ---
+// Connects to: backend/routers/tasks.py
+// Used in: Notes.jsx
+export const taskService = {
+    getTasks: async () => {
+        const response = await apiClient.get('/tasks/');
+        return response.data;
+    },
+    createTask: async (data) => {
+        const response = await apiClient.post('/tasks/', data);
+        return response.data;
+    },
+    updateTask: async (id, data) => {
+        const response = await apiClient.put(`/tasks/${id}`, data);
+        return response.data;
+    },
+    deleteTask: async (id) => {
+        const response = await apiClient.delete(`/tasks/${id}`);
+        return response.data;
+    }
+};
+
+// --- SUBSCRIPTION SERVICE ---
+export const subscriptionService = {
+    upgrade: async (plan) => {
+        const response = await apiClient.post('/subscription/upgrade', { plan });
+        return response.data;
+    },
+    getStatus: async () => {
+        const response = await apiClient.get('/subscription/status');
         return response.data;
     }
 };

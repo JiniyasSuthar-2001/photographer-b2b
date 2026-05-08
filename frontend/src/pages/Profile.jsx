@@ -1,3 +1,15 @@
+// ==================================================================================
+// PAGE: PROFILE
+// Purpose: Management of user identity, business settings, and professional portfolio.
+// Connected Pages: 
+// - Dashboard.jsx (Displays user welcome name)
+// - Sidebar.jsx (Displays user avatar and email)
+// - Team.jsx (Photography aliases are based on user registration info)
+// Role Logic:
+// - Photographers (Owners) manage studio/business settings here.
+// - Freelancers manage their skills, equipment, and portfolio for discovery.
+// ==================================================================================
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -8,7 +20,9 @@ import {
 import Avatar from '../components/ui/Avatar';
 import { ROLE_TYPES } from '../data/mockData';
 import { GUJARAT_CITIES } from '../data/gujaratCities';
+import { authService } from '../services/api';
 import './Profile.css';
+
 
 const ALL_SKILLS = ['Wedding','Portrait','Editorial','Street','Documentary','Commercial','Fashion','Event','Product','Architecture'];
 const ROLE_KEYS  = Object.keys(ROLE_TYPES);
@@ -16,13 +30,13 @@ const ROLE_KEYS  = Object.keys(ROLE_TYPES);
 export default function Profile() {
   const { state, dispatch, addToast } = useApp();
   const navigate = useNavigate();
-  const { user, freelancerProfile: fp } = state;
+  const { user, photographerProfile: fp } = state;
 
-  const [name,  setName]  = useState(user.name);
+  const [name,  setName]  = useState(user.full_name || user.username);
   const [email, setEmail] = useState(user.email);
   const [phone, setPhone] = useState(user.phone);
-  const [studio, setStudio] = useState(user.studioName||'Lumière Studio');
-  const [location, setLocation] = useState(user.studioLocation||'Ahmedabad');
+  const [studio, setStudio] = useState(user.studioName || 'My Studio');
+  const [location, setLocation] = useState(user.studioLocation || 'Ahmedabad');
 
   const [bio,   setBio]   = useState(fp.bio);
   const [skills,     setSkills]     = useState([...fp.skills]);
@@ -41,8 +55,8 @@ export default function Profile() {
   };
 
   const handleSaveAll = () => {
-    dispatch({ type:'UPDATE_USER', payload:{ name, email, phone, studioName:studio, studioLocation:location }});
-    dispatch({type:'UPDATE_FREELANCER_PROFILE', payload:{ bio, skills, specialties, yearsExperience:yearsExp, instagramHandle:insta, portfolioUrl:portfolio }});
+    dispatch({ type:'UPDATE_USER', payload:{ full_name: name, email, phone, studioName:studio, studioLocation:location }});
+    dispatch({type:'UPDATE_PHOTOGRAPHER_PROFILE', payload:{ bio, skills, specialties, yearsExperience:yearsExp, instagramHandle:insta, portfolioUrl:portfolio }});
     addToast('✅ Profile saved', 'success');
   };
 
@@ -61,28 +75,15 @@ export default function Profile() {
     addToast('Equipment removed','info');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    await authService.logout();
     navigate('/auth');
     addToast('Logged out successfully', 'info');
   };
 
   return (
     <>
-      {user.isOnTrial && !user.trialModalDismissed && (
-        <div className="modal-overlay" style={{zIndex:2000}}>
-          <div className="modal card-padding" style={{maxWidth:400,textAlign:'center'}}>
-            <div style={{fontSize:48,marginBottom:16}}>✨</div>
-            <h2 style={{margin:'0 0 8px 0'}}>Welcome to Lumière</h2>
-            <p style={{color:'var(--text-secondary)',fontSize:14,marginBottom:24,lineHeight:1.5}}>
-              Your complete photography management platform. Manage your jobs, team, and bookings all in one place.
-            </p>
-            <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}} onClick={handleDismissTrial}>
-              Get Started
-            </button>
-          </div>
-        </div>
-      )}
+
 
       <div className="profile-page">
         <div className="profile-grid">
@@ -93,15 +94,17 @@ export default function Profile() {
               <div className="profile-avatar-section">
                 <div className="profile-avatar-wrap">
                   <Avatar name={name} size="xl"/>
-                  <button className="profile-avatar-edit"><Camera size={14}/></button>
                 </div>
                 <div>
                   <div className="profile-display-name">{name}</div>
                   <div className="profile-display-email">{email}</div>
                   <div style={{display:'flex',gap:6,marginTop:6}}>
-                    <span className="badge badge-purple">Photographer</span>
+                    <span className="badge badge-purple">
+                      {user.user_type === 'photographer' ? 'Photographer' : 'Freelancer'}
+                    </span>
                   </div>
                 </div>
+
               </div>
 
               <div className="profile-fields">
@@ -183,7 +186,8 @@ export default function Profile() {
               </div>
 
               <div style={{marginBottom:'var(--space-4)'}}>
-                <label style={{display:'block',fontSize:12.5,fontWeight:600,color:'var(--text-secondary)',marginBottom:'var(--space-2)'}}>Categories</label>
+                <label style={{display:'block',fontSize:12.5,fontWeight:600,color:'var(--text-secondary)',marginBottom:'var(--space-2)'}}>Specialized Roles</label>
+
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                   {specialties.map(r=>{
                     const rt=ROLE_TYPES[r] || { color: '#6366F1', bg: 'rgba(99,102,241,0.12)' };
@@ -207,11 +211,12 @@ export default function Profile() {
                   })}
                 </div>
                 <div style={{display:'flex', gap:8, marginTop:10}}>
-                  <input className="input-field input-sm" placeholder="Add custom category..." value={customCat} onChange={e=>setCustomCat(e.target.value)} style={{flex:1}} />
+                  <input className="input-field input-sm" placeholder="Add custom role..." value={customCat} onChange={e=>setCustomCat(e.target.value)} style={{flex:1}} />
                   <button className="btn btn-secondary btn-sm" onClick={() => { if(customCat.trim()) { toggleSpecialty(customCat.trim()); setCustomCat(''); } }}>
                     <Plus size={14}/> Add
                   </button>
                 </div>
+
               </div>
 
               <div>

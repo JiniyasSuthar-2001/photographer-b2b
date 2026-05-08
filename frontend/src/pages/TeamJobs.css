@@ -255,14 +255,14 @@
 
 .kanban-menu-item:hover { background: var(--bg-hover); }
 
-/* Freelancer View */
-.freelancer-filters {
+/* Photographer View */
+.photographer-filters {
   display: flex;
   gap: var(--space-3);
   flex-wrap: wrap;
 }
 
-.freelancer-job-grid {
+.photographer-job-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-5);

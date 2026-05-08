@@ -26,7 +26,7 @@ const TAG_COLORS = {
 
 export default function TeamJobs() {
   const { isStudioOwner } = usePermission();
-  return isStudioOwner ? <StudioView /> : <FreelancerView />;
+  return isStudioOwner ? <StudioView /> : <PhotographerView />;
 }
 
 /* ── Studio Owner View ───────────────────────────────────────────────────── */
@@ -337,8 +337,8 @@ function KanbanCard({ job, team, canMove, onMove, columns }) {
   );
 }
 
-/* ── Freelancer View ─────────────────────────────────────────────────────── */
-function FreelancerView() {
+/* ── Photographer View ─────────────────────────────────────────────────────── */
+function PhotographerView() {
   const { state, dispatch, addToast } = useApp();
   const { jobs } = state;
   const [search, setSearch] = useState('');
@@ -385,7 +385,7 @@ function FreelancerView() {
       {activeTab === 'available' && (
         <>
           {/* Filters */}
-          <div className="freelancer-filters">
+          <div className="photographer-filters">
             <div style={{ position: 'relative', flex: 1 }}>
               <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
@@ -407,9 +407,9 @@ function FreelancerView() {
             </select>
           </div>
 
-          <div className="freelancer-job-grid">
+          <div className="photographer-job-grid">
             {openJobs.map(job => (
-              <FreelancerJobCard key={job.id} job={job} onApply={handleApply} applied={appliedJobs.has(job.id)} />
+              <PhotographerJobCard key={job.id} job={job} onApply={handleApply} applied={appliedJobs.has(job.id)} />
             ))}
             {openJobs.length === 0 && (
               <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
@@ -452,7 +452,7 @@ function FreelancerView() {
   );
 }
 
-function FreelancerJobCard({ job, onApply, applied }) {
+function PhotographerJobCard({ job, onApply, applied }) {
   return (
     <div className="fl-job-card card card-hover">
       <div className="fl-job-card-inner">

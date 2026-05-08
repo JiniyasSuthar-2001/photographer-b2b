@@ -1,3 +1,9 @@
+# ==================================================================================
+# NOTIFICATIONS ROUTER
+# Purpose: Powers the real-time alert system and unread badges.
+# Affected Pages: Frontend -> NotificationBell.jsx (TopBar)
+# ==================================================================================
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -9,6 +15,8 @@ from typing import List
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
+# --- ENDPOINTS ---
+
 @router.get("/", response_model=List[NotificationResponse])
 async def get_notifications(
     page: int = Query(1, ge=1),
@@ -16,6 +24,11 @@ async def get_notifications(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Fetches the user's notification history.
+    Frontend Impact: Populates the dropdown list in the NotificationBell.
+    Polling: NotificationBell.jsx calls this every 30 seconds to refresh the list.
+    """
     offset = (page - 1) * limit
     notifications = db.query(models.Notification).\
         filter(models.Notification.user_id == current_user.id).\
@@ -30,6 +43,11 @@ async def mark_as_read(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Marks a single notification as read.
+    Frontend Impact: Triggered when a user clicks a notification item in the bell dropdown.
+    Visual Impact: Removes the 'unread' highlight and reduces the badge count in the navbar.
+    """
     notification = db.query(models.Notification).filter(
         and_(
             models.Notification.id == id,
@@ -50,6 +68,10 @@ async def mark_all_as_read(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Marks all notifications for the user as read.
+    Frontend Impact: Triggered by the 'Mark all as read' link in the bell dropdown.
+    """
     db.query(models.Notification).filter(
         and_(
             models.Notification.user_id == current_user.id,
