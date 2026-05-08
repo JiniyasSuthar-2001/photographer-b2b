@@ -60,5 +60,9 @@ async def get_subscription_status(current_user: models.User = Depends(get_curren
     """
     Returns the current user's subscription details.
     """
-    return current_user
-
+    return {
+        "plan": current_user.plan,
+        "is_pro": current_user.is_pro,
+        "is_on_trial": current_user.is_on_trial,
+        "trial_days_left": current_user.trial_days_left
+    }
