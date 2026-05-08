@@ -10,7 +10,8 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
 import { reducer } from './reducer';
 import { getAppInitialState } from '../data/mockData';
-import { jobService, requestService, notificationService, teamService, taskService } from '../services/api';
+import { jobService, requestService, notificationService, teamService, taskService, subscriptionService } from '../services/api';
+
 
 
 const today = new Date().toISOString().split('T')[0];
@@ -46,14 +47,15 @@ const getSessionInitialState = () => {
     analyticsTimeframe: '1M',
 
     
-    // Dynamic data
-    jobs: [],
-    jobRequests: [],
-    jobTasks: [],
-    notifications: [],
-    unreadCount: 0,
+    // Dynamic data: Initialize as empty for everyone EXCEPT admin (who uses mock data as fallback)
+    jobs: initialUser?.username === 'admin' ? baseState.jobs : [],
+    jobRequests: initialUser?.username === 'admin' ? baseState.jobRequests : [],
+    jobTasks: initialUser?.username === 'admin' ? baseState.jobTasks : [],
+    notifications: initialUser?.username === 'admin' ? baseState.notifications : [],
+    unreadCount: initialUser?.username === 'admin' ? (baseState.notifications?.filter(n => !n.is_read).length || 0) : 0,
   };
 };
+
 
 const initialState = getSessionInitialState();
 
@@ -69,17 +71,20 @@ export function AppProvider({ children }) {
 
     const syncBackendData = async () => {
       try {
-        const [jobs, notifications, team, tasks] = await Promise.all([
+        const [jobs, notifications, team, tasks, userStatus] = await Promise.all([
           jobService.getJobs(),
           notificationService.getNotifications(),
           teamService.getTeam(),
-          taskService.getTasks()
+          taskService.getTasks(),
+          subscriptionService.getStatus()
         ]);
         
+        dispatch({ type: 'INITIALIZE_USER_DATA', payload: userStatus });
         dispatch({ type: 'SET_JOBS', payload: jobs });
         dispatch({ type: 'SET_NOTIFICATIONS', payload: notifications });
         dispatch({ type: 'SET_TEAM', payload: team });
         dispatch({ type: 'SET_TASKS', payload: tasks });
+
 
         // Fetch requests based on role
         if (state.user.mode === 'freelancer' || state.user.user_type === 'freelancer') {

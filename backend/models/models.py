@@ -38,6 +38,16 @@ class User(Base):
     plan = Column(String, default='Starter')
     is_on_trial = Column(Boolean, default=True)
     trial_days_left = Column(Integer, default=14)
+    
+    # Professional Profile Fields (Expanding for rich dummy data)
+    bio = Column(String, default="")
+    skills_text = Column(String, default="") # Comma-separated
+    specialties_text = Column(String, default="") # Comma-separated
+    years_experience = Column(Integer, default=0)
+    instagram_handle = Column(String, default="")
+    portfolio_url = Column(String, default="")
+    equipment_json = Column(String, default="[]") # JSON string for equipment list
+
 
     # Relationships
     jobs_owned = relationship("Job", back_populates="owner")

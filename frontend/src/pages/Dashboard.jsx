@@ -62,9 +62,14 @@ export default function Dashboard() {
   // Earnings logic based on role requirement
   // Photographer = Revenue from owned jobs (mocked here from analytics)
   // Freelancer = Payouts from accepted jobs
+  const lastEarning = analytics.photographerEarnings?.length > 0 
+    ? analytics.photographerEarnings[analytics.photographerEarnings.length - 1].amount 
+    : 0;
+
   const currentEarnings = isPhotographerMode 
-    ? ((analytics.photographerEarnings[analytics.photographerEarnings.length - 1]?.amount || 0) * 1.5) 
-    : (analytics.photographerEarnings[analytics.photographerEarnings.length - 1]?.amount || 0);
+    ? (lastEarning * 1.5) 
+    : lastEarning;
+
 
 
   // --- NEXT WEEK WORK (COMBINED ECOSYSTEM) ---
@@ -198,10 +203,11 @@ export default function Dashboard() {
                 // PHOTOGRAPHER VIEW (Old Studio Owner)
                 myOwnedJobs.length === 0 ? (
                   <EmptyState 
-                    title="No Photography Jobs" 
-                    message="You haven't created any jobs for your business yet."
+                    title="No data available yet" 
+                    message="Your photography jobs will appear here. Post your first job to get started."
                     action={<NavLink to="/job-hub" className="btn btn-primary btn-sm">Post a Job</NavLink>}
                   />
+
                 ) : myOwnedJobs.map(job => (
 
                   <div key={job.id} className="ecosystem-card">
@@ -219,9 +225,10 @@ export default function Dashboard() {
                 // FREELANCER VIEW
                 myIncomingRequests.length === 0 ? (
                   <EmptyState 
-                    title="No Incoming Requests" 
-                    message="You don't have any freelance job requests right now."
+                    title="No data available yet" 
+                    message="Incoming freelance invitations will appear here."
                   />
+
                 ) : myIncomingRequests.map(req => (
                   <div key={req.id} className="ecosystem-card highlight">
                     <div className="eco-card-top">
@@ -248,9 +255,10 @@ export default function Dashboard() {
             </div>
             {activeAssignmentsCount === 0 ? (
               <EmptyState 
-                title="No Active Assignments" 
-                message="Your schedule is clear for today."
+                title="No active assignments" 
+                message="Your schedule will appear here once you accept a job invitation."
               />
+
             ) : (
               <div className="assignments-compact">
                 {jobRequests.filter(r => r.status === 'accepted').slice(0, 3).map(req => (

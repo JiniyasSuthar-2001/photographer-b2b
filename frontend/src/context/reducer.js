@@ -36,6 +36,38 @@ export function reducer(state, action) {
       return { ...state, user: updatedUser };
     }
 
+    case 'INITIALIZE_USER_DATA': {
+      const u = action.payload;
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          id: u.id,
+          username: u.username,
+          full_name: u.full_name,
+          phone: u.phone,
+          city: u.city,
+          category: u.category,
+          user_type: u.user_type,
+          is_pro: u.is_pro,
+          plan: u.plan,
+          is_on_trial: u.is_on_trial,
+          trial_days_left: u.trial_days_left
+        },
+        photographerProfile: {
+          ...state.photographerProfile,
+          bio: u.bio || '',
+          skills: u.skills_text ? u.skills_text.split(',') : [],
+          specialties: u.specialties_text ? u.specialties_text.split(',') : [],
+          yearsExperience: u.years_experience || 0,
+          instagramHandle: u.instagram_handle || '',
+          portfolioUrl: u.portfolio_url || '',
+          equipment: u.equipment_json ? JSON.parse(u.equipment_json) : []
+        }
+      };
+    }
+
+
     // ── Jobs ──────────────────────────────────────────────────────────────────
     case 'ADD_JOB':
       return { ...state, jobs: [action.payload, ...state.jobs] };

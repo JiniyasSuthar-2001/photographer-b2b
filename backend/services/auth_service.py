@@ -20,9 +20,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 HARDCODED_USERS = {
     "admin": "admin@001",
-    "admin01": "admin@002",
-    "admin02": "admin003",
 }
+
 
 class AuthService:
     @staticmethod
@@ -64,8 +63,10 @@ class AuthService:
                     db.commit()
                     db.refresh(user)
                 
-                # SEED DEMO DATA for Admin
-                demo_service.seed_admin_data(db, user.id)
+                # SEED DEMO DATA ONLY for primary Admin
+                if user.username == "admin":
+                    demo_service.seed_admin_data(db, user.id)
+
                 
                 return user
         

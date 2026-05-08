@@ -165,12 +165,17 @@ export default function JobHub() {
 
           const otherRequests = state.jobRequests.filter(r => r.status !== 'pending');
           dispatch({ type: 'SET_JOB_REQUESTS', payload: [...data, ...otherRequests] });
+        } else if (activeSubTab === 'past_assignments') {
+          // Re-use accepted jobs but logic in render will filter for past
+          const data = await requestService.getAcceptedJobs();
+          setAcceptedJobs(sortChronologically(data, 'date'));
         } else {
           const data = await requestService.getDeclinedInvites();
           setDeclinedInvites(data);
           const otherRequests = state.jobRequests.filter(r => r.status !== 'declined');
           dispatch({ type: 'SET_JOB_REQUESTS', payload: [...data, ...otherRequests] });
         }
+
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -257,18 +262,23 @@ export default function JobHub() {
       jobDate.setHours(0, 0, 0, 0);
       
       const isPast = job.is_completed || jobDate.getTime() < now.getTime();
+      const isTodayOrFuture = jobDate.getTime() >= now.getTime();
 
       switch (jobFilter) {
         case 'current': 
-          return job.accepted_count > 0 && jobDate.getTime() === now.getTime() && !isPast;
+          // Assigned jobs that are today or in the future
+          return job.accepted_count > 0 && isTodayOrFuture;
         case 'yet_to_assign': 
-          return job.accepted_count === 0 && !isPast;
+          // Jobs that are today or in the future but have 0 accepted requests
+          return job.accepted_count === 0 && isTodayOrFuture;
         case 'past': 
+          // Jobs that have passed the date or are completed
           return isPast;
         default: 
           return true;
       }
     });
+
 
     return sortChronologically(filtered);
   };
@@ -331,7 +341,11 @@ export default function JobHub() {
             {isLoading ? (
               <div className="loading-state">Loading jobs...</div>
             ) : filterMyJobs().length === 0 ? (
-              <div className="empty-state">No jobs found</div>
+              <div className="empty-state">
+                <Briefcase size={40} style={{color:'var(--text-muted)',marginBottom:16}}/>
+                <p>No jobs found yet. Post your first job to get started!</p>
+              </div>
+
             ) : (
               filterMyJobs().map(job => (
                 <div key={job.id} className={`job-card redesigned-card ${job.is_completed ? 'completed-lifecycle' : ''}`}>
@@ -421,46 +435,36 @@ export default function JobHub() {
         /* VIEW: ACCEPTED JOBS / INVITES (PHOTOGRAPHER) */
         <div className="accepted-jobs-section">
           <div className="sub-tabs">
-            <button 
-              className={`sub-tab ${activeSubTab === 'accepted' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('accepted')}
-            >
+            <button className={`sub-tab-btn ${activeSubTab === 'accepted' ? 'active' : ''}`} onClick={() => setActiveSubTab('accepted')}>
               Accepted Jobs
             </button>
-            <button 
-              className={`sub-tab ${activeSubTab === 'invites' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('invites')}
-            >
+
+            <button className={`sub-tab-btn ${activeSubTab === 'invites' ? 'active' : ''}`} onClick={() => setActiveSubTab('invites')}>
               Invites {invites.length > 0 && <span className="badge">{invites.length}</span>}
             </button>
-            <button 
-              className={`sub-tab ${activeSubTab === 'past' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('past')}
-            >
+            <button className={`sub-tab-btn ${activeSubTab === 'past_assignments' ? 'active' : ''}`} onClick={() => setActiveSubTab('past_assignments')}>
               Past Assignments
             </button>
-            <button 
-              className={`sub-tab ${activeSubTab === 'declined' ? 'active' : ''}`}
-              onClick={() => setActiveSubTab('declined')}
-            >
+            <button className={`sub-tab-btn ${activeSubTab === 'declined' ? 'active' : ''}`} onClick={() => setActiveSubTab('declined')}>
               Declined Jobs
             </button>
           </div>
 
 
           <div className="job-grid">
-            {(activeSubTab === 'accepted' || activeSubTab === 'past') ? (
-              acceptedJobs.length === 0 ? (
-                <div className="empty-state">No {activeSubTab === 'past' ? 'past' : 'accepted'} jobs yet</div>
+            {activeSubTab === 'accepted' ? (
+              /* VIEW: ACCEPTED JOBS (Upcoming) */
+              acceptedJobs.filter(j => new Date(j.date || j.job_date).getTime() >= new Date().setHours(0,0,0,0)).length === 0 ? (
+                <div className="empty-state">No data available yet. Your accepted jobs will appear here.</div>
               ) : (
-                acceptedJobs.map(job => (
-                  <div key={job.id} className={`job-card accepted ${activeSubTab === 'past' ? 'completed-lifecycle' : ''}`}>
+
+                acceptedJobs.filter(j => new Date(j.date || j.job_date).getTime() >= new Date().setHours(0,0,0,0)).map(job => (
+                  <div key={job.id} className="job-card accepted">
                     <div className="job-card-header">
                       <h3>{job.title || job.job_title}</h3>
                       <span className="role-tag">{job.role}</span>
                     </div>
                     <div className="job-card-body">
-                      {/* Clicking owner_name opens work history modal */}
                       <p className="owner-link" onClick={() => setShowCollaborationModal(job)}>
                         <User size={14} /> {job.owner_name || job.sender_name}
                       </p>
@@ -469,11 +473,31 @@ export default function JobHub() {
                   </div>
                 ))
               )
-
+            ) : activeSubTab === 'past_assignments' ? (
+              /* VIEW: PAST ASSIGNMENTS (History) */
+              acceptedJobs.filter(j => new Date(j.date || j.job_date).getTime() < new Date().setHours(0,0,0,0)).length === 0 ? (
+                <div className="empty-state">No past assignments found</div>
+              ) : (
+                acceptedJobs.filter(j => new Date(j.date || j.job_date).getTime() < new Date().setHours(0,0,0,0)).map(job => (
+                  <div key={job.id} className="job-card accepted completed-lifecycle">
+                    <div className="job-card-header">
+                      <h3>{job.title || job.job_title}</h3>
+                      <span className="role-tag">{job.role}</span>
+                    </div>
+                    <div className="job-card-body">
+                      <p className="owner-link" onClick={() => setShowCollaborationModal(job)}>
+                        <User size={14} /> {job.owner_name || job.sender_name}
+                      </p>
+                      <p><Clock size={14} /> {new Date(job.date || job.job_date).toLocaleDateString('en-GB')}</p>
+                    </div>
+                  </div>
+                ))
+              )
             ) : activeSubTab === 'invites' ? (
               invites.length === 0 ? (
-                <div className="empty-state">No pending invites</div>
+                <div className="empty-state">No pending invites. Your incoming job requests will appear here.</div>
               ) : (
+
                 invites.map(invite => (
                   <div key={invite.id} className="job-card invite">
                     <div className="job-card-header">
