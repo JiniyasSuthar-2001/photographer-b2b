@@ -23,8 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 __pycache__/
+# Project Documentation (Allow tracking)
 API_Integration_Plan.md
-Backend_Api_Documentation.md    
+Backend_Api_Documentation.md
+
 *.scratch
 *.db
 *.pyc
